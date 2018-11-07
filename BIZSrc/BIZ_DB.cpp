@@ -440,9 +440,48 @@ bool DB_SaveUnitsList(int CID, tmUnits *UnitsList)
 //-----------------------------------------------------------------------------
 //  
 //-----------------------------------------------------------------------------
+int DB_ExternExchangeSateEx(std::string BDName, int fromID )
+{
+	int res = 0;
+	DB_DBC *DBC = NULL;
+	sqlite3_stmt *stmt;
+
+	if (sqlite3_open(BDName.c_str(), &DBC) == SQLITE_OK) {
+		sqlite3_busy_timeout(DBC, 5000);
+	}
+	else {
+		char msg[1024];
+		int ercod;
+		ercod = sqlite3_errcode(DBC);
+		snprintf(msg, sizeof(msg) - 1, "Не удалось открыть соединение с БД %s.( %d: %s.)", BDName.c_str(), ercod, sqlite3_errmsg(DBC));
+		sqlite3_close(DBC);
+		throw EDBException(msg);
+	}
+
+	sqlite3_close(DBC);
+	return res;
+
+}
+
+int DB_ExternExchangeSate(std::string BDName, int fromID)
+{
+	int res = false;
+	try {
+		res = DB_ExternExchangeSateEx(BDName, fromID);
+	}
+	catch (EDBException &e) {
+		LogMessage(e.Message.c_str(), ML_ERR2);
+	}
+	return res;
+}
+
+//-----------------------------------------------------------------------------
+//  
+//-----------------------------------------------------------------------------
 
 
 //-----------------------------------------------------------------------------
 //  
 //-----------------------------------------------------------------------------
+
 
