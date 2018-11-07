@@ -67,6 +67,9 @@ DWORD MainCycleThread(LPDWORD lpdwParam)
         //BIZClient->AutoPurchaseGoods(1901352, 7);
         //BIZClient->Test2();
 
+		sprintf(s, "%bizdb_home.sdb", ExecPath);
+		BIZClient->Test3(s);
+
         // основной цыкл (крутится пока не остановить сервис)
         while (!bMainThreadStopped) {
             // пытаемся получить следующую задачу к выполнению

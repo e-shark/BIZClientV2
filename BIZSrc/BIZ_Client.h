@@ -63,6 +63,8 @@ public:
 
     bool Test1(void);
     bool Test2(void);
+	bool Test3(std::string BDName);
+
     //int GetCitiesList(void);
 };
 

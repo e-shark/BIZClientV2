@@ -443,24 +443,37 @@ bool DB_SaveUnitsList(int CID, tmUnits *UnitsList)
 int DB_ExternExchangeSateEx(std::string BDName, int fromID )
 {
 	int res = 0;
-	DB_DBC *DBC = NULL;
+	DB_DBC *DBC = DB_GetDBContext();
 	sqlite3_stmt *stmt;
+	char bufName[2048];
 
-	if (sqlite3_open(BDName.c_str(), &DBC) == SQLITE_OK) {
-		sqlite3_busy_timeout(DBC, 5000);
-	}
-	else {
-		char msg[1024];
-		int ercod;
-		ercod = sqlite3_errcode(DBC);
-		snprintf(msg, sizeof(msg) - 1, "Не удалось открыть соединение с БД %s.( %d: %s.)", BDName.c_str(), ercod, sqlite3_errmsg(DBC));
-		sqlite3_close(DBC);
-		throw EDBException(msg);
-	}
+	if (DBC) {
 
+
+		// Сначала икручиваем другую базу
+		if (sqlite3_prepare_v2(DBC, "ATTACH ?1 AS B2; ", -1, &stmt, 0) != SQLITE_OK) goto DB_ExternExchangeSateErr;
+		cp1251_to_utf8(bufName, BDName.c_str());
+		if (sqlite3_bind_text(stmt, 1, bufName, -1, NULL) != SQLITE_OK) goto DB_ExternExchangeSateErr;
+		if (SQLITE_DONE != sqlite3_step(stmt))  goto DB_ExternExchangeSateErr;
+		sqlite3_finalize(stmt);
+
+		// Копируем таблицу
+		if (sqlite3_prepare_v2(DBC, "INSERT INTO ExchangeState (PurchasePrice, SellingPrice, TimeStamp, ServerTime, ServerTimeStr) VALUES (SELECT PurchasePrice, SellingPrice, TimeStamp, ServerTime, ServerTimeStr FROM B2.ExchangeState); ", -1, &stmt, 0) != SQLITE_OK) goto DB_ExternExchangeSateErr;
+		if (SQLITE_DONE != sqlite3_step(stmt))  goto DB_ExternExchangeSateErr;
+		sqlite3_finalize(stmt);
+
+	}
 	sqlite3_close(DBC);
 	return res;
 
+DB_ExternExchangeSateErr:
+	char msg[1024];
+	int ercod;
+	ercod = sqlite3_errcode(DBC);
+	snprintf(msg, sizeof(msg) - 1, "DB_SaveExchangeState Error.(%d: %s)", ercod, sqlite3_errmsg(DBC));
+	sqlite3_finalize(stmt);
+	sqlite3_close(DBC);
+	throw EDBException(msg);
 }
 
 int DB_ExternExchangeSate(std::string BDName, int fromID)
