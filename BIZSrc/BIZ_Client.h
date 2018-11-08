@@ -30,6 +30,9 @@ public:
     // Получить с сервера и записать в базу курс биржи игровых очков
     bool SaveExchangeState(void);
 
+	// Импортировать историю обменного курса из другой БД
+	bool ImportExchangeState(std::string BDName);
+
     // Прочитать на странице текущее игровое время сервера
     bool TryGetServerTime(char* Page);
 

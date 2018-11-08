@@ -286,6 +286,19 @@ bool tBIZ_Client::SaveExchangeState(void)
 }
 
 //-----------------------------------------------------------------------------
+//  Импортировать историю обменного курса из другой БД
+//-----------------------------------------------------------------------------
+bool tBIZ_Client::ImportExchangeState(std::string BDName)
+{
+	std::string str;
+	str = "==== Экспорт истории кура биржи ИО из ";
+	str += BDName;
+	str += " ====";
+	LogMessage(str.c_str(), ML_WRK2);
+	return DB_ExternExchangeSate(BDName);
+}
+
+//-----------------------------------------------------------------------------
 // Вытащить со страницы текущее игровое время сервера
 //-----------------------------------------------------------------------------
 bool tBIZ_Client::TryGetServerTime(char* Page)
@@ -498,7 +511,7 @@ bool tBIZ_Client::Test2(void)
 bool tBIZ_Client::Test3(std::string BDName)
 {
 	LogMessage("==== Тест работы с БД  ====", ML_WRK2);
-	DB_ExternExchangeSateEx(BDName,0);
+	DB_ExternExchangeSateEx(BDName);
 	return true;
 }
 

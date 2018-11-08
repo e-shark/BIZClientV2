@@ -165,15 +165,16 @@ int DB_GetPerson(int id, std::string &srv, std::string &login, std::string &psw,
 //  в буфер Param параметры задани€ (двоична€ структура данных)
 //  ParamLen - размер данных в параметре (не более ParamBufLen)
 //-----------------------------------------------------------------------------
-int DB_GetSheduleEx(int cid, int &type, int &ParamI1, int &ParamI2, void *ParamBin, int ParamBinBufLen, int &ParamBinLen)
+int DB_GetSheduleEx(int cid, int &type, int &ParamI1, int &ParamI2, std::string &ParamStr, void *ParamBin, int ParamBinBufLen, int &ParamBinLen)
 {
     int res = 0;
     DB_DBC *DBC = DB_GetDBContext();
     sqlite3_stmt *stmt;
     int id;
     int n;
+	char *pC;
     char select[2024] =
-        "select ID , Type, ParamI1, ParamI2, ParamBin "
+        "select ID , Type, ParamI1, ParamI2, ParamStr, ParamBin "
         "from Schedule "
         "where ( CID = ?1 ) "
         "  and ( Disabled=0 or Disabled is null ) "
@@ -190,10 +191,13 @@ int DB_GetSheduleEx(int cid, int &type, int &ParamI1, int &ParamI2, void *ParamB
             type = sqlite3_column_int(stmt, 1);
             ParamI1 = sqlite3_column_int(stmt, 2);
             ParamI2 = sqlite3_column_int(stmt, 3);
-            n = sqlite3_column_bytes(stmt, 4);
+			pC = (char*)sqlite3_column_text(stmt, 4);
+			if (pC) ParamStr = pC;
+			else ParamStr = "";
+            n = sqlite3_column_bytes(stmt, 5);
             if ((ParamBin) && (ParamBinBufLen)) {
                 if (n > ParamBinBufLen) n = ParamBinBufLen;
-                memcpy(ParamBin, sqlite3_column_blob(stmt, 4), n);
+                memcpy(ParamBin, sqlite3_column_blob(stmt, 5), n);
                 ParamBinLen = n;
             }
             else ParamBinLen = 0;
@@ -215,11 +219,11 @@ DB_GetSchedErr:
 
 }
 
-int DB_GetShedule(int cid, int &type, int &ParamI1, int &ParamI2, void *ParamBin, int ParamBinBufLen, int &ParamBinLen)
+int DB_GetShedule(int cid, int &type, int &ParamI1, int &ParamI2, std::string &ParamStr, void *ParamBin, int ParamBinBufLen, int &ParamBinLen)
 {
     int res = 0;
     try {
-        res = DB_GetSheduleEx(cid, type, ParamI1, ParamI2, ParamBin, ParamBinBufLen, ParamBinLen);
+        res = DB_GetSheduleEx(cid, type, ParamI1, ParamI2, ParamStr, ParamBin, ParamBinBufLen, ParamBinLen);
     }
     catch (EDBException &e) {
         LogMessage(e.Message.c_str(), ML_ERR2);
@@ -438,49 +442,52 @@ bool DB_SaveUnitsList(int CID, tmUnits *UnitsList)
 
 
 //-----------------------------------------------------------------------------
-//  
+//	Ёкспорт обменного курса »ќ из другой базы.
+//	Ѕерет из указанной базы значение обменного курса с метко й времени, которых нет в текущей базе.
+//	“аким образом выполн€етс€ странение "дырок" в таблице обменного курса.
 //-----------------------------------------------------------------------------
-int DB_ExternExchangeSateEx(std::string BDName, int fromID )
+bool DB_ExternExchangeSateEx(std::string BDName)
 {
-	int res = 0;
+	int res = false;
 	DB_DBC *DBC = DB_GetDBContext();
-	sqlite3_stmt *stmt;
-	char bufName[2048];
+	std::string sql;
+	int sqlres;
+	char *errStr;
 
 	if (DBC) {
+		sql = "ATTACH '";																			// ѕрисоедин€ем другую базу
+		sql += BDName;
+		sql += "'AS zB2 ; ";
+		sql += "DROP TABLE IF EXISTS tmp1 ; ";														// Ќа вс€кий случай дропаем временную таблицу, если она почему-то уже есть
+		sql += "CREATE TABLE IF NOT EXISTS tmp1 AS SELECT * FROM main.ExchangeState LIMIT 1; ";		// —оздаем временную таблицу по образу и подобию существующей таблицы обменного курса (пока дл€ этого дергаем одну запись, но нужно будет сделать создание только структуры без наполнени€)
+		sql += "DELETE FROM tmp1; ";																// ќчищаем временную таблицу
+		sql += "INSERT INTO tmp1 (PurchasePrice, SellingPrice, TimeStamp, ServerTime, ServerTimeStr) SELECT PurchasePrice, SellingPrice, TimeStamp, ServerTime, ServerTimeStr FROM zB2.ExchangeState WHERE TimeStamp NOT IN(SELECT TimeStamp FROM main.ExchangeState); ";	// »нсертим во временную таблицу записи из внешней базы, которых нет у нас в нашей базе
+		sql += "INSERT INTO tmp1 (PurchasePrice, SellingPrice, TimeStamp, ServerTime, ServerTimeStr) SELECT PurchasePrice, SellingPrice, TimeStamp, ServerTime, ServerTimeStr FROM main.ExchangeState; ";																	// ƒобавл€ем во временную таблицу записи, которые есть у нас в базе
+		sql += "DELETE FROM main.ExchangeState; ";													// ќчищаем нашу таблицу курса
+		sql += "INSERT INTO main.ExchangeState (PurchasePrice, SellingPrice, TimeStamp, ServerTime, ServerTimeStr) SELECT PurchasePrice, SellingPrice, TimeStamp, ServerTime, ServerTimeStr FROM tmp1 ORDER BY TimeStamp; "; // ¬ставл€ем в нашу таблицу курса данные из временной таблицы
+		sql += "DROP TABLE IF EXISTS tmp1; ";														// ”бираем за собой
+		sql += "DETACH zB2; ";																		// ќтсоединчем другую базу
 
-
-		// —начала икручиваем другую базу
-		if (sqlite3_prepare_v2(DBC, "ATTACH ?1 AS B2; ", -1, &stmt, 0) != SQLITE_OK) goto DB_ExternExchangeSateErr;
-		cp1251_to_utf8(bufName, BDName.c_str());
-		if (sqlite3_bind_text(stmt, 1, bufName, -1, NULL) != SQLITE_OK) goto DB_ExternExchangeSateErr;
-		if (SQLITE_DONE != sqlite3_step(stmt))  goto DB_ExternExchangeSateErr;
-		sqlite3_finalize(stmt);
-
-		//  опируем таблицу
-		if (sqlite3_prepare_v2(DBC, "INSERT INTO ExchangeState (PurchasePrice, SellingPrice, TimeStamp, ServerTime, ServerTimeStr) VALUES (SELECT PurchasePrice, SellingPrice, TimeStamp, ServerTime, ServerTimeStr FROM B2.ExchangeState); ", -1, &stmt, 0) != SQLITE_OK) goto DB_ExternExchangeSateErr;
-		if (SQLITE_DONE != sqlite3_step(stmt))  goto DB_ExternExchangeSateErr;
-		sqlite3_finalize(stmt);
-
+		sqlres = sqlite3_exec(DBC,sql.c_str(),NULL,NULL,&errStr);
+		//if (0 != sqlres) {
+		if (NULL != errStr) {
+			char msg[1024];
+			snprintf(msg, sizeof(msg) - 1, "ExternExchangeSate Error.(%d: %s)", sqlres, errStr);
+			sqlite3_close(DBC);
+			throw EDBException(msg);
+		}
+		res = true;
 	}
 	sqlite3_close(DBC);
 	return res;
 
-DB_ExternExchangeSateErr:
-	char msg[1024];
-	int ercod;
-	ercod = sqlite3_errcode(DBC);
-	snprintf(msg, sizeof(msg) - 1, "DB_SaveExchangeState Error.(%d: %s)", ercod, sqlite3_errmsg(DBC));
-	sqlite3_finalize(stmt);
-	sqlite3_close(DBC);
-	throw EDBException(msg);
 }
 
-int DB_ExternExchangeSate(std::string BDName, int fromID)
+bool DB_ExternExchangeSate(std::string BDName)
 {
-	int res = false;
+	bool res = false;
 	try {
-		res = DB_ExternExchangeSateEx(BDName, fromID);
+		res = DB_ExternExchangeSateEx(BDName);
 	}
 	catch (EDBException &e) {
 		LogMessage(e.Message.c_str(), ML_ERR2);

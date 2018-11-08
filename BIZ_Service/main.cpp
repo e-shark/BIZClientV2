@@ -30,6 +30,7 @@ DWORD MainCycleThread(LPDWORD lpdwParam)
     int SchedType;
     int SchedID;
     int ParamI1, ParamI2;
+	std::string ParamStr;
     char *ParamBuf;
     int ParamBufLen = 16384;
     int ParamLen;
@@ -67,13 +68,13 @@ DWORD MainCycleThread(LPDWORD lpdwParam)
         //BIZClient->AutoPurchaseGoods(1901352, 7);
         //BIZClient->Test2();
 
-		sprintf(s, "%bizdb_home.sdb", ExecPath);
-		BIZClient->Test3(s);
+		//sprintf(s, "%sbizdb_home.sdb", ExecPath);
+		//BIZClient->Test3(s);
 
         // основной цыкл (крутится пока не остановить сервис)
         while (!bMainThreadStopped) {
             // пытаемся получить следующую задачу к выполнению
-            SchedID = DB_GetShedule(BIZClient->PersCID(), SchedType, ParamI1, ParamI2, ParamBuf, ParamBufLen, ParamLen);
+            SchedID = DB_GetShedule(BIZClient->PersCID(), SchedType, ParamI1, ParamI2, ParamStr, ParamBuf, ParamBufLen, ParamLen);
             if (SchedID) {
                 sprintf(s, "*** Выполняю задание %d (type %d)", SchedID, SchedType);
                 LogMessage(s, ML_WRK1);
@@ -134,11 +135,11 @@ DWORD MainCycleThread(LPDWORD lpdwParam)
                         // удалить на глубину старую статистику
                         break;
 
-                    case 10:             // - прочитать сообщения -
-                        break;
+					case 10:            // - сменить точку входа
+						BIZClient->ChangeEntryPoint();
+						break;
 
-                    case 13:            // - сменить точку входа
-                        BIZClient->ChangeEntryPoint();
+                    case 13:             // - прочитать сообщения -
                         break;
 
                     case 14:             // - записать историю цен на продукты в городе -
@@ -147,6 +148,11 @@ DWORD MainCycleThread(LPDWORD lpdwParam)
                     case 15:             // - прочитать обменный курс -
                         BIZClient->SaveExchangeState();
                         break;
+
+					case 16:             // - импортирувать историю обменного курса
+						//sprintf(s, "%sbizdb_home.sdb", ExecPath);
+						BIZClient->ImportExchangeState(ParamStr);
+						break;
 
 
                     default:
