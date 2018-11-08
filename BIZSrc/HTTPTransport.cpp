@@ -6,7 +6,7 @@
 
 #include "HTTPTransport.h"
 #include "LogUtils.h"
-#include "curl/curl.h"
+#include "include/curl.h"
 #include "BIZ_Parser.h"
 #include "TCPSocket.h"
 

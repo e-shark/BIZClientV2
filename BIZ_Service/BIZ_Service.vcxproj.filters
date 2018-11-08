@@ -76,7 +76,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Library Include="..\BIZSrc\sqlite3.lib" />
     <Library Include="..\curl\libcurl.lib" />
+    <Library Include="..\BIZSrc\sqlite3.lib" />
   </ItemGroup>
 </Project>

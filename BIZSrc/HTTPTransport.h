@@ -2,7 +2,7 @@
 #define HHTPTRANSPORTH
 
 #include <string>
-#include "curl/curl.h"
+#include "include/curl.h"
 
 //------------------------------------------------------------------------------
 class tHTML_Response
