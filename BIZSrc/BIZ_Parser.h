@@ -6,6 +6,7 @@
 
 char* SpaceRemove(char *s);                                                     // Убирает все пробелы из строки
 char* my_strdig(char *s);                                                       // Поиск первой цифры в строке
+std::string GetMoneyFormatStr(double Price);										// Формирует строку в денежном формате NNN NNN NNN.NN 
 
 bool BIZ_CheckLogined(tHTML_Response *RSP, bool frame = true);
 bool BIZ_ParseServerTime(char* Page, sSrvTime *pSrvTime);

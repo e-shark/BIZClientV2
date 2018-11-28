@@ -528,8 +528,9 @@ int tBIZ_Client::GetShopGoodsList(int unitId, tmGoodsList *pGL, tmCityPriceMap *
     bool getres;
     char *pct1;
 
-    s = "==== Получить перечень товаров магазина (";
-    s += IntToStr(unitId); s += ")# ====";
+    s = "  Получить перечень товаров магазина (";
+    s += IntToStr(unitId); 
+	s += ")";
     LogMessage(s.c_str(), ML_WRK3);
 
     s = "/units/shop/?id=";
@@ -542,7 +543,12 @@ int tBIZ_Client::GetShopGoodsList(int unitId, tmGoodsList *pGL, tmCityPriceMap *
         pct1 = strstr(RSP->Body, "<html>");
         if (pct1) {
             // Парсим страницу
-            res = BIZ_ParseShoopGoodsTable(RSP->Body, pGL, pCPM);
+			try {
+				res = BIZ_ParseShoopGoodsTable(RSP->Body, pGL, pCPM);
+			}
+			catch (...) {
+				LogMessage("ERROR GetShopGoodsList: exception в процедуре BIZ_ParseShoopGoodsTable !", ML_ERR2);
+			}
         }
         else {
             LogMessage("ERROR GetShopGoodsList: Не найден тэг <html> на странице !", ML_ERR2);
@@ -681,12 +687,12 @@ bool tBIZ_Client::SetGoodsPrice(int unitId, tmPriceFactor *PF)
     delete RSP;
 
     if (res) {
-        sh = "Установлена автоцена в магазине id=";
+        sh = " Установлена автоцена в магазине id=";
         sh += IntToStr(unitId);
         WirteReport(sh.c_str(), ML_WRK3);
     }
     else {
-        sh = "Не удалось установить автоцену в магазине id=";
+        sh = " Не удалось установить автоцену в магазине id=";
         sh += IntToStr(unitId);
         WirteReport(sh.c_str(), ML_ERR2);
     }
@@ -708,9 +714,9 @@ bool tBIZ_Client::GetShopProductInfo(int WHID, int ProductID, sBIZGoods *Info)
     bool getres;
     char *pct1;
 
-    s = "==== Get Info for Product from Shop ID= ";
+    s = "  Get Info for Product from Shop ID= ";
     s += IntToStr(WHID);        s += " product ";
-    s += IntToStr(ProductID);   s += " ====";
+    s += IntToStr(ProductID);
     LogMessage(s.c_str(), ML_WRK3);
 
     memset(Info, 0, sizeof(sBIZGoods));
@@ -761,9 +767,10 @@ int tBIZ_Client::GetVendorsForUnit(int unitId, int Product, TVendorList *Vendors
     float favqual = 0;
     tHTML_Response *RSP = new tHTML_Response();
 
-    s = "==== Get Vendors For for Shop ID= ";
-    s += IntToStr(unitId);      s += " product ";
-    s += IntToStr(Product);     s += " ====";
+    s = "  Get Vendors For for Shop ID= ";
+    s += IntToStr(unitId);      
+	s += " product ";
+    s += IntToStr(Product);
     LogMessage(s.c_str(), ML_WRK3);
 
     //if (fOnProgress) fOnProgress(1);
@@ -771,7 +778,7 @@ int tBIZ_Client::GetVendorsForUnit(int unitId, int Product, TVendorList *Vendors
     //Vendors->Clear();
     //Vendors->ProductId = Product;
     if (Vendors->ProductId != Product) {
-        s = "Указанный ProductId (";
+        s = "   Указанный ProductId (";
         s += IntToStr(Product);
         s += ") не совпадает с таковым в списке (";
         s += IntToStr(Vendors->ProductId);
@@ -814,7 +821,7 @@ int tBIZ_Client::GetVendorsForUnit(int unitId, int Product, TVendorList *Vendors
                     PN = BIZ_ParseVendorsPagesCount(RSP->Body); // если страница только одна, и нет paginator, то функция вернет 0
                     if (0 == PN) PN = 1;    // для красивости
 
-                    s = "кол-во страниц : ";
+                    s = "   кол-во страниц : ";
                     s += IntToStr(PN);
                     LogMessage(s.c_str(), ML_DBG3);
 
@@ -834,14 +841,14 @@ int tBIZ_Client::GetVendorsForUnit(int unitId, int Product, TVendorList *Vendors
     }  //while
 
     if (getres) {
-        s = "Загружено ";
+        s = "   Загружено ";
         s += IntToStr(page);
         s += " страниц из ";
         s += IntToStr(PN);
         LogMessage(s.c_str(), ML_DBG3);
     }
     else {
-        s = "Загружено только ";
+        s = "   Загружено только ";
         s += IntToStr(page);
         s += " страниц из ";
         s += IntToStr(PN);
@@ -966,11 +973,11 @@ int tBIZ_Client::ExecuteOreder(int UnitID, TVendorList *VendorList, float* Cost)
                     ResPrcsh = PurchaseProduct(UnitID, pV->VendorID, VendorList->ProductId, pV->OrderNum);
 
                     if (ResPrcsh) {
-                        sMsg = "Приобретено для (";
+                        sMsg = " Приобретено для (";
                         fcost += pV->OrderNum * pV->Cost;
                     }
                     else {
-                        sMsg = "Не удалось приобрести для (";
+                        sMsg = " Не удалось приобрести для (";
                     }
                     sMsg += IntToStr(UnitID);
                     sMsg += ") у ";
@@ -1037,9 +1044,13 @@ float tBIZ_Client::AutoPurchaseGoods(int unitId, int Days)
 
     VL = new TVendorList();
 
-    s = "Auto Purchase Goods. ID= ";
+    s = "==== Auto Purchase Goods. ID= ";
     s += IntToStr(unitId); 
-    s += " ====";
+	s += " for ";
+	s += IntToStr(Days);
+	if (1 == Days) s += " day"; 
+	else s += " days";
+	s += " ====";
     LogMessage(s.c_str(), ML_WRK2);
 
     GL.clear();
@@ -1077,11 +1088,11 @@ x3:
 
         VL->SelectForOrder(VL->fAverageQuality * (1.0 + fQualityOverpricing / 100.0), Num, bPrcshAnwy, fMaxPurchasePriceExcess);
         if (ExecuteOreder(unitId, VL, &fCost)) {
-            s = "Автозакупка в магазине id=";
+            s = " Автозакупка в магазине id=";
             s += IntToStr(unitId);
         }
         else {
-            s = "Не удалась автозакупка в магазине id=";
+            s = " Не удалась автозакупка в магазине id=";
             s += IntToStr(unitId);
         }
 
@@ -1098,8 +1109,8 @@ x3:
     if (fCost > 0.1) {
         s = "Total cost autopurchase for ID ";
         s += IntToStr(unitId);
-        s += ": ";
-        s += FloatToStr(fCost);
+        s += ":  ";
+		s += GetMoneyFormatStr(fCost);	//FloatToStr(fCost);
         WirteReport(s.c_str(), ML_WRK2);
     }
 
@@ -1135,8 +1146,8 @@ bool tBIZ_Client::AutoPurchaseForAllMarkets(int days)
             fCost += AutoPurchaseForMarket((*iUL).second->ID, days);
         }
     }
-    s = "Total cost of autopurchase : ";
-    s += FloatToStr(fCost);
+    s = "Total cost of autopurchase :  ";
+    s += GetMoneyFormatStr(fCost);
     WirteReport(s.c_str(), ML_WRK1);
     return true;
 }

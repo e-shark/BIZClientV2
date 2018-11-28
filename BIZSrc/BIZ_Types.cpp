@@ -841,7 +841,7 @@ std::string GetCurrencyName(int currency)
 //-----------------------------------------------------------------------------
 //
 //-----------------------------------------------------------------------------
-std::string IntToStr(int Value)
+std::string IntToStr(long Value)
 {
     std::string res;
     char s[50];

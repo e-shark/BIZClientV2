@@ -41,7 +41,7 @@ public:
     long Cod;
 
     EParserException(const std::string Msg, long cod = 100l) : BIZException(Msg.c_str()), Cod(cod) {};
-    EParserException(int C) : BIZException("Error") { };
+    EParserException(long cod) : BIZException("Error"), Cod(cod) { };
     virtual ~EParserException() throw() {}
 };
 

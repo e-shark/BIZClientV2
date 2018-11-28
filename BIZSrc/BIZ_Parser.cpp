@@ -59,6 +59,61 @@ int BIZ_GetUnitTypeByURI(char *URI)
     return 0;
 }
 
+//-----------------------------------------------------------------------------
+//      ‘ормирует строку в денежном формате NNN NNN NNN.NN 
+//-----------------------------------------------------------------------------
+std::string GetMoneyFormatStr(double Price)
+{
+	std::string res;
+	int p1, p2, p3, p4, d5;
+	char ts[10];
+	bool bf = false;
+
+	if (0 == Price) return "0.00";
+	p1 = (int)Price % 1000;
+	p2 = ((int)(Price / 1000)) % 1000;
+	p3 = ((int)(Price / 1000000)) % 1000;
+	p4 = ((int)(Price / 1000000000)) % 1000;
+	d5 = (int)((Price - (int)Price)*100.0);
+
+	res = "";
+	if (p4) {
+		res += IntToStr(p4);
+		res += " ";
+	}
+
+	if (p4)
+		sprintf(ts, "%.3d ", p3);
+	else
+		if (p3)
+			sprintf(ts, "%d ", p3);
+		else
+			sprintf(ts, "");
+	res += ts;
+
+	if (p4 || p3)
+		sprintf(ts, "%.3d ", p2);
+	else
+		if (p2)
+			sprintf(ts, "%d ", p2);
+		else
+			sprintf(ts, "");
+	res += ts;
+
+	if (p4 || p3 || p2)
+		sprintf(ts, "%.3d", p1);
+	else
+		if (p1)
+			sprintf(ts, "%d", p1);
+		else
+			sprintf(ts, "0");
+	res += ts;
+
+	sprintf(ts, ".%d", d5);
+	res += ts;
+
+	return res;
+}
 
 //-----------------------------------------------------------------------------
 //      ‘ормирует строку с ценой дл€ POST запроса выставлени€ цены
@@ -507,6 +562,10 @@ int  BIZ_ParseShoopGoodsTable(char* Page, tmGoodsList *pGL, tmCityPriceMap *pCPM
     char *pEnd, *pST;
     int id;
 
+#ifdef DEBUG_BUILD
+	int x, maxx = 40, l;	// дл€ отладки
+#endif
+
     sQPrice QP;
     sBIZGoods Goods;
 
@@ -540,8 +599,11 @@ int  BIZ_ParseShoopGoodsTable(char* Page, tmGoodsList *pGL, tmCityPriceMap *pCPM
             pc1 += 9;
             pc2 = strchr(pc1 + 2, '"');
             if (!pc2) throw EParserException(7);
-            memset(ts, 0, sizeof(ts));
-            memcpy(ts, pc1, pc2 - pc1);
+#ifdef DEBUG_BUILD
+			x = pc2 - pc1; if (x > maxx) throw EParserException(101);
+#endif
+			memset(ts, 0, sizeof(ts));
+            memcpy(ts, pc1, min(pc2 - pc1,sizeof(ts)-1));
             id = atoi(SpaceRemove(ts));
             Goods.ID = id;
 
@@ -556,24 +618,31 @@ int  BIZ_ParseShoopGoodsTable(char* Page, tmGoodsList *pGL, tmCityPriceMap *pCPM
             pc1 = strchr(pST + 20, '>');
             if (!pc1) throw EParserException(10);
             pc1 += 1;
-            pc2 = strstr(pc1, "<br/>");
-            if (!pc2) throw EParserException(11);
+            pc2 = strstr(pc1, "&nbsp");
+			if (!pc2) throw EParserException(11);
             pc1 = my_strdig(pc1);
             if (pc1 && (pc1<pc2)) {
-                memset(ts, 0, sizeof(ts));
-                memcpy(ts, pc1, pc2 - pc1);
-                Goods.Proceeds = atoi(SpaceRemove(ts));
+#ifdef DEBUG_BUILD
+				x = pc2 - pc1; if (x > maxx) throw EParserException(102);
+#endif
+				memset(ts, 0, sizeof(ts));
+				memcpy(ts, pc1, min(pc2 - pc1, sizeof(ts) - 1));
+				Goods.Proceeds = atoi(SpaceRemove(ts));
             }
             else Goods.Proceeds = 0;
             //   прибыль
-            pc1 += 5;
-            pc2 = strstr(pc1, "</td>");
-            if (!pc2) throw EParserException(13);
+			pc1 = strstr(pc2, "<br/>");
+			pc1 += 5;
+			pc2 = strstr(pc1, "&nbsp");
+			if (!pc2) throw EParserException(13);
             pc1 = my_strdig(pc1);
             if (pc1 && (pc1<pc2)) {
-                memset(ts, 0, sizeof(ts));
-                memcpy(ts, pc1, pc2 - pc1);
-                Goods.Profit = atoi(SpaceRemove(ts));
+#ifdef DEBUG_BUILD
+				x = pc2 - pc1; if (x > maxx) throw EParserException(103);
+#endif
+				memset(ts, 0, sizeof(ts));
+				memcpy(ts, pc1, min(pc2 - pc1, sizeof(ts) - 1));
+				Goods.Profit = atoi(SpaceRemove(ts));
             }
             else Goods.Profit = 0;
 
@@ -598,9 +667,12 @@ int  BIZ_ParseShoopGoodsTable(char* Page, tmGoodsList *pGL, tmCityPriceMap *pCPM
             else
                 pc2 = pc3;
             if (!pc2) throw EParserException(17);
-            memset(ts, 0, sizeof(ts));
-            memcpy(ts, pc1, pc2 - pc1);
-            Goods.Available = atoi(SpaceRemove(ts));
+#ifdef DEBUG_BUILD
+			x = pc2 - pc1; if (x > maxx) throw EParserException(104);
+#endif
+			memset(ts, 0, sizeof(ts));
+			memcpy(ts, pc1, min(pc2 - pc1, sizeof(ts) - 1));
+			Goods.Available = atoi(SpaceRemove(ts));
 
             //  ачество товара на складе
             pST = strstr(pST + 4, "<td align=\"center\"");
@@ -610,8 +682,11 @@ int  BIZ_ParseShoopGoodsTable(char* Page, tmGoodsList *pGL, tmCityPriceMap *pCPM
             pc1 += 1;
             pc2 = strstr(pc1, "</td>");
             if (!pc2) throw EParserException(20);
-            memset(ts, 0, sizeof(ts));
-            memcpy(ts, pc1, pc2 - pc1);
+#ifdef DEBUG_BUILD
+			x = pc2 - pc1; if (x > maxx) throw EParserException(105);
+#endif
+			memset(ts, 0, sizeof(ts));
+			memcpy(ts, pc1, min(pc2 - pc1, sizeof(ts) - 1));
             Goods.Quality = atof(SpaceRemove(ts));
 
             // —тоимость товара на складе
@@ -624,9 +699,12 @@ int  BIZ_ParseShoopGoodsTable(char* Page, tmGoodsList *pGL, tmCityPriceMap *pCPM
             if (!pc2) throw EParserException(23);
             pc1 = my_strdig(pc1);
             if (pc1 && (pc1<pc2)) {
-                memset(ts, 0, sizeof(ts));
-                memcpy(ts, pc1, pc2 - pc1);
-                Goods.Cost = atof(SpaceRemove(ts));
+#ifdef DEBUG_BUILD
+				x = pc2 - pc1; if (x > maxx) throw EParserException(106);
+#endif
+				memset(ts, 0, sizeof(ts));
+				memcpy(ts, pc1, min(pc2 - pc1, sizeof(ts) - 1));
+				Goods.Cost = atof(SpaceRemove(ts));
             }
             else Goods.Cost = 0;
 
@@ -639,9 +717,12 @@ int  BIZ_ParseShoopGoodsTable(char* Page, tmGoodsList *pGL, tmCityPriceMap *pCPM
             pc2 = strchr(pc1 + 7, '"');
             if (!pc2) throw EParserException(26);
             if (pc1<pc2) {
-                memset(ts, 0, sizeof(ts));
-                memcpy(ts, pc1, pc2 - pc1);
-                if (!BIZ_ParsePrice(ts, Goods.Price, Goods.Currency)) throw EParserException(32);
+#ifdef DEBUG_BUILD
+				x = pc2 - pc1; if (x > maxx) throw EParserException(107);
+#endif
+				memset(ts, 0, sizeof(ts));
+				memcpy(ts, pc1, min(pc2 - pc1, sizeof(ts) - 1));
+				if (!BIZ_ParsePrice(ts, Goods.Price, Goods.Currency)) throw EParserException(32);
             }
             else Goods.Price = 0;
 
@@ -653,9 +734,12 @@ int  BIZ_ParseShoopGoodsTable(char* Page, tmGoodsList *pGL, tmCityPriceMap *pCPM
             pc1 += 1;
             pc2 = strstr(pc1, "</td>");
             if (!pc2) throw EParserException(29);
-            memset(ts, 0, sizeof(ts));
-            memcpy(ts, pc1, pc2 - pc1);
-            QP.Quality = atof(SpaceRemove(ts));
+#ifdef DEBUG_BUILD
+			x = pc2 - pc1; if (x > maxx) throw EParserException(108);
+#endif
+			memset(ts, 0, sizeof(ts));
+			memcpy(ts, pc1, min(pc2 - pc1, sizeof(ts) - 1));
+			QP.Quality = atof(SpaceRemove(ts));
 
             // средн€€ по городу цена
             pST = strstr(pST + 4, "<td align=\"right\" nowrap");
@@ -666,9 +750,12 @@ int  BIZ_ParseShoopGoodsTable(char* Page, tmGoodsList *pGL, tmCityPriceMap *pCPM
             pc2 = strstr(pc1, "</td>");
             if (!pc2) throw EParserException(32);
             if (pc1<pc2) {
-                memset(ts, 0, sizeof(ts));
-                memcpy(ts, pc1, pc2 - pc1);
-                if (!BIZ_ParsePrice(ts, QP.Price, QP.Currency)) throw EParserException(32);
+#ifdef DEBUG_BUILD
+				x = pc2 - pc1; if (x > maxx) throw EParserException(109);
+#endif
+				memset(ts, 0, sizeof(ts));
+				memcpy(ts, pc1, min(pc2 - pc1, sizeof(ts) - 1));
+				if (!BIZ_ParsePrice(ts, QP.Price, QP.Currency)) throw EParserException(32);
             }
             else QP.Price = 0;
 
@@ -680,9 +767,12 @@ int  BIZ_ParseShoopGoodsTable(char* Page, tmGoodsList *pGL, tmCityPriceMap *pCPM
             pc1 += 1;
             pc2 = strstr(pc1, "</td>");
             if (!pc2) throw EParserException(35);
-            memset(ts, 0, sizeof(ts));
-            memcpy(ts, pc1, pc2 - pc1);
-            Goods.Sales = atoi(SpaceRemove(ts));
+#ifdef DEBUG_BUILD
+			x = pc2 - pc1; if (x > maxx) throw EParserException(110);
+#endif
+			memset(ts, 0, sizeof(ts));
+			memcpy(ts, pc1, min(pc2 - pc1, sizeof(ts) - 1));
+			Goods.Sales = atoi(SpaceRemove(ts));
 
             // галочка "сво€ компани€"
             pST = strstr(pST + 4, "<td");
@@ -697,9 +787,12 @@ int  BIZ_ParseShoopGoodsTable(char* Page, tmGoodsList *pGL, tmCityPriceMap *pCPM
             pc1 += 7;
             pc2 = strchr(pc1, '"');
             if (!pc2) throw EParserException(39);
-            memset(ts, 0, sizeof(ts));
-            memcpy(ts, pc1, pc2 - pc1);
-            Goods.Purchase = atoi(SpaceRemove(ts));
+#ifdef DEBUG_BUILD
+			x = pc2 - pc1; if (x > maxx) throw EParserException(111);
+#endif
+			memset(ts, 0, sizeof(ts));
+			memcpy(ts, pc1, min(pc2 - pc1, sizeof(ts) - 1));
+			Goods.Purchase = atoi(SpaceRemove(ts));
 
             pGL->insert(pair<int, sBIZGoods>(id, Goods));
             pCPM->insert(pair<int, sQPrice>(id, QP));

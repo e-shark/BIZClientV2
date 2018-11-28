@@ -251,7 +251,7 @@ struct sSalesHistoryRec {
 //      —труктуры, св€занные со списками цен на товар      
 //-----------------------------------------------------------------------------
 
-std::string IntToStr(int Value);
+std::string IntToStr(long Value);
 std::string FloatToStr(float Value, int precision =2);
 std::string GetCurrencyName(int currency);
 float GetPriceInCurrency(float Price, int Currency, int currencyTo = curRUB);

@@ -7,6 +7,7 @@
 #include "LogUtils.h"
 #include "BIZ_DB.h"
 #include "BIZ_Client.h"
+#include "BIZ_Parser.h"
 
 char ExecPath[256]="";
 
