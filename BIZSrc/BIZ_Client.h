@@ -43,7 +43,7 @@ public:
     int GetShopGoodsList(int unitId, tmGoodsList *pGL, tmCityPriceMap *pCPM);
 
     // ¬ыставить цену на товары в магазине исход€ из средней цены по городу
-    bool SetGoodsPrice(int unitId, tmPriceFactor *PF);
+    bool SetGoodsPrice(int unitId);
 
     //      ѕроизвести автозакупку товара в магазин
     float AutoPurchaseGoods(int unitId, int Days);
@@ -63,10 +63,9 @@ public:
 
     
 
-
     bool Test1(void);
     bool Test2(void);
-	bool Test3(std::string BDName);
+    bool Test3(std::string BDName);
 
     //int GetCitiesList(void);
 };

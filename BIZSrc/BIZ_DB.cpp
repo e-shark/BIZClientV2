@@ -495,6 +495,106 @@ bool DB_ExternExchangeSate(std::string BDName)
 	return res;
 }
 
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+std::string DB_GetFactorLocationTypeStr(int LocationType)
+{
+    switch (LocationType) {
+    case 1: return "для юнита"; break;
+    case 2: return "для города"; break;
+    case 3: return "для региона"; break;
+    case 4: return "для страны"; break;
+    case 5: return "для для компании"; break;
+    case 0:
+    default:
+        return "локация неизвестна";
+    }
+}
+
+//-----------------------------------------------------------------------------
+//  Найти значение коэффициента
+// Типы коэффициентов
+//      1 - Price                               // Цена продукта (товара)
+//      2 - Price Dumping = -5;                 // На сколько процентов больше нужно выставить цену продуктов при корректироваке цены (-99% .. +99%)
+//      3 - Price Permitted Excess = 1.0;       // На сколько процентов цена на продукт может превышать среднюю цену по городу (-99% .. +99%)
+//      4 - Quality                             // Тредуемое качество для продукта
+//      5 - Quality Dumping = 2;                // На сколько процентов лучше по качеству продукты нужно пытаться закупать (-99% .. +99%)
+//      6 - Quality Minimum                     // Минимальное допустимое качество для магазина
+//      7 - Quality Maximum                     // Максимальное допустимое качество для магазина
+// Виды LocationType
+//      1 - для магазина
+//      2 - для города
+//      3 - для региона
+//      4 - для страны
+//      5 - для всей компании
+//      0 - коэффициент не найден
+//-----------------------------------------------------------------------------
+int DB_GetFactorEx(int FactorType, int ProductID, int ShopID, int &resLevel , int &resFactor)
+{
+    int res = 0;
+    DB_DBC *DBC = DB_GetDBContext();
+    sqlite3_stmt *stmt;
+    int LocationType;
+    int Location;
+    int Value;
+    int Region = 0;     // Не стал задействовать пока регион, поэтому он не в параметрах, а здесь
+    int Country = 0;    // В дальнейшем нужна таблица географии, все это можно будет вытащить по городу
+    char select[2024] =
+        "SELECT LocationType, Location, Value FROM Factors "
+        "WHERE Type = ?1 AND Object = ?2 "
+        "AND( "
+          "    (LocationType = 1 AND Location = ?3) "   // магазин
+          " OR (LocationType = 2 AND Location = (SELECT City FROM Units WHERE UID=1712842 LIMIT ?3)) "   // город
+          " OR (LocationType = 3 AND Location = ?4) "   // регион
+          " OR (LocationType = 4 AND Location = ?5) "   // страна
+          " OR (LocationType = 5 AND Location = (SELECT City FROM Units WHERE UID=1712842 LIMIT ?3)) "   // компания
+        ") ORDER BY LocationType; ";
+
+    if (DBC) {
+        if (sqlite3_prepare_v2(DBC, select, -1, &stmt, 0) != SQLITE_OK) goto DB_GetFactorErr;
+        if (sqlite3_bind_int(stmt, 1, FactorType) != SQLITE_OK)  goto DB_GetFactorErr;
+        if (sqlite3_bind_int(stmt, 2, ProductID) != SQLITE_OK)  goto DB_GetFactorErr;
+        if (sqlite3_bind_int(stmt, 3, ShopID) != SQLITE_OK)  goto DB_GetFactorErr;
+        if (sqlite3_bind_int(stmt, 4, Region) != SQLITE_OK)  goto DB_GetFactorErr;
+        if (sqlite3_bind_int(stmt, 5, Country) != SQLITE_OK)  goto DB_GetFactorErr;
+        if (SQLITE_ROW == sqlite3_step(stmt)) {
+            LocationType = sqlite3_column_int(stmt, 0);
+            Location = sqlite3_column_int(stmt, 1);
+            Value = sqlite3_column_int(stmt, 2);
+
+            resLevel = LocationType;
+            resFactor = Value;
+            res = resLevel;
+        }
+        else res = 0;
+        sqlite3_finalize(stmt);
+    }
+    DB_CloseDBC(DBC);
+    return res;
+
+DB_GetFactorErr:
+    char msg[1024];
+    int ercod;
+    ercod = sqlite3_errcode(DBC);
+    snprintf(msg, sizeof(msg) - 1, "DB_GetFactorErr Error.(%d: %s)", ercod, sqlite3_errmsg(DBC));
+    sqlite3_finalize(stmt);
+    sqlite3_close(DBC);
+    throw EDBException(msg);
+}
+
+int DB_GetFactor(int FactorType, int ProductID, int ShopID, int &resLevel, int &resFactor)
+{
+    int res = 0;
+    try {
+        res = DB_GetFactorEx(FactorType, ProductID, ShopID, resLevel, resFactor);
+    }
+    catch (EDBException &e) {
+        LogMessage(e.Message.c_str(), ML_ERR2);
+    }
+    return res;
+}
+
 //-----------------------------------------------------------------------------
 //  
 //-----------------------------------------------------------------------------

@@ -41,4 +41,8 @@ bool DB_SaveUnitsListEx(int CID, tmUnits *UnitsList);
 bool DB_ExternExchangeSate(std::string BDName);
 bool DB_ExternExchangeSateEx(std::string BDName);
 
+std::string DB_GetFactorLocationTypeStr(int LocationType);
+int DB_GetFactor(int FactorType, int ProductID, int ShopID, int &resLevel, int &resFactor);
+int DB_GetFactorEx(int FactorType, int ProductID, int ShopID, int &resLevel, int &resFactor);
+
 #endif

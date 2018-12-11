@@ -565,19 +565,20 @@ int tBIZ_Client::GetShopGoodsList(int unitId, tmGoodsList *pGL, tmCityPriceMap *
 //-----------------------------------------------------------------------------
 //      Сменить цены продажи в магазине
 //-----------------------------------------------------------------------------
-bool tBIZ_Client::SetGoodsPrice(int unitId, tmPriceFactor *PF)
+bool tBIZ_Client::SetGoodsPrice(int unitId)
 {
     bool res = false;
     bool getres = false;
     tHTML_Response *RSP;
     char *pc1;
+    std::string sm;
     std::string sh;
     std::string sb;
     tmGoodsList GL;
     tmCityPriceMap CPM;
     tmGoodsList::iterator iGL;
     tmCityPriceMap::iterator iCPM;
-    tmPriceFactor::iterator iPF;
+//    tmPriceFactor::iterator iPF;
     float PFactor;
     float Price;
     int i;
@@ -586,7 +587,10 @@ bool tBIZ_Client::SetGoodsPrice(int unitId, tmPriceFactor *PF)
 
     // !!! .... Это потом надо буждет брать из базы
     float fDefaultDumping = -5;                // На сколько процентов больше нужно выставить цену продуктов при корректироваке цены (-99% .. +99%)
-    float fPermittedExcess = 1.0;               // На сколько процентов цена на продукт может превышать среднюю цену по городу (-99% .. +99%)
+    float fPermittedExcess = 10;               // На сколько процентов цена на продукт может превышать среднюю цену по городу (-99% .. +99%)
+
+    int resLevel;
+    int resFactor;
 
     RSP = new tHTML_Response();
 
@@ -612,42 +616,51 @@ bool tBIZ_Client::SetGoodsPrice(int unitId, tmPriceFactor *PF)
         //if (0 == (*iGL).second.Price) continue;
 
         // Ищем коэффициент для цены в списке, переданном в качестве параметра процедуры
-        if (PF) {
-            iPF = PF->find((*iGL).first);
-            if (PF->end() != iPF)
-                PFactor = iPF->second;
-            else
-                PFactor = 1 + fDefaultDumping / 100.0;
+        if (DB_GetFactor(1, (*iGL).second.ID, unitId, resLevel, resFactor)) {
+            Price = resFactor;
+            sm = " для товара ";
+            sm += IntToStr((*iGL).second.ID);
+            sm += " определена цена ";
+            sm += IntToStr(resFactor);
+            sm += " ";
+            sm += DB_GetFactorLocationTypeStr(resLevel);
+            WirteReport(sm.c_str(), ML_WRK3);
         }
-        else
+        else {
+            if (DB_GetFactor(2, (*iGL).second.ID, unitId, resLevel, resFactor)) 
+                fDefaultDumping = resFactor;
+            if (DB_GetFactor(3, (*iGL).second.ID, unitId, resLevel, resFactor)) 
+                fPermittedExcess = resFactor;
+
             PFactor = 1 + fDefaultDumping / 100.0;
 
-        // Вычисляем цену, умножив среднюю по городу (если есть) на коэффициент  
-        iCPM = CPM.find((*iGL).first);                                                              // Получаем среднюю по городу цену
+            // Вычисляем цену, умножив среднюю по городу (если есть) на коэффициент  
+            iCPM = CPM.find((*iGL).first);                                                              // Получаем среднюю по городу цену
 
-        if ((CPM.end() != iCPM) && (iCPM->second.Quality > 0.0001)) {
-            Price = iCPM->second.Price * PFactor *((*iGL).second.Quality / iCPM->second.Quality);
-            if (Price > iCPM->second.Price * (1.0 + fPermittedExcess / 100))                            // Не разрешаем поднимать цену выше средней
-                Price = iCPM->second.Price* (1.0 + fPermittedExcess / 100);
+            if ((CPM.end() != iCPM) && (iCPM->second.Quality > 0.0001)) {
+                Price = iCPM->second.Price * PFactor *((*iGL).second.Quality / iCPM->second.Quality);
+                if (Price > iCPM->second.Price * (1.0 + fPermittedExcess / 100))                            // Не разрешаем поднимать цену выше средней
+                    Price = iCPM->second.Price* (1.0 + fPermittedExcess / 100);
+            }
+            else
+                Price = (*iGL).second.Price;                                                            // Если почему-то нет средней цены, оставляем прежднюю цену
+
+            if (Price < (*iGL).second.Cost * 1.1)
+                Price = (*iGL).second.Cost * 1.1;                                                       // Не разрешаем опускать цену ниже себестоимости + 10%
+
+                                                                                                        // Если по каким-то причинам цена получилась нулевой, то оставляем прежнюю цену
+            if (0 == Price) continue;
+
+            // Округляем цену (для красоты)
+            if (Price > 10)
+                Price = int(Price + 0.5);
+            if (Price > 100)
+                Price = (int(Price / 10 + 0.5) * 10);
+            if (Price > 1000)
+                Price = (int(Price / 100 + 0.5) * 100);
+            //if (Price>10000)
+            //  Price = (int(Price/1000 + 0.5)*1000);
         }
-        else
-            Price = (*iGL).second.Price;                                                            // Если почему-то нет средней цены, оставляем прежднюю цену
-
-        if (Price < (*iGL).second.Cost * 1.1)
-            Price = (*iGL).second.Cost * 1.1;                                                       // Не разрешаем опускать цену ниже себестоимости + 10%
-
-                                                                                                    // Если по каким-то причинам цена получилась нулевой, то оставляем прежнюю цену
-        if (0 == Price) continue;
-
-        // Округляем цену (для красоты)
-        if (Price > 10)
-            Price = int(Price + 0.5);
-        if (Price > 100)
-            Price = (int(Price / 10 + 0.5) * 10);
-        if (Price > 1000)
-            Price = (int(Price / 100 + 0.5) * 100);
-        //if (Price>10000)
-        //  Price = (int(Price/1000 + 0.5)*1000);
 
         // формируем параметр
         if (i > 0) sb += "&";
@@ -689,7 +702,7 @@ bool tBIZ_Client::SetGoodsPrice(int unitId, tmPriceFactor *PF)
     if (res) {
         sh = " Установлена автоцена в магазине id=";
         sh += IntToStr(unitId);
-        WirteReport(sh.c_str(), ML_WRK3);
+        WirteReport(sh.c_str(), ML_WRK2);
     }
     else {
         sh = " Не удалось установить автоцену в магазине id=";
@@ -1124,9 +1137,9 @@ x3:
 //-----------------------------------------------------------------------------
 float tBIZ_Client::AutoPurchaseForMarket(int UId, int days)
 {
-	float res = 0.0;
-	res = AutoPurchaseGoods(UId, days);
-    SetGoodsPrice(UId, NULL);
+    float res = 0.0;
+    res = AutoPurchaseGoods(UId, days);
+    SetGoodsPrice(UId);
     return res;
 }
 
@@ -1160,7 +1173,7 @@ bool tBIZ_Client::SetGoodsPriceForAllMarkets(void)
         GetCompanyInfo();           // загружаем её
     for (tmUnits::iterator iUL = Company->begin(); iUL != Company->end(); iUL++) {
         if (2 == (*iUL).second->Type) {
-            SetGoodsPrice((*iUL).second->ID, NULL);
+            SetGoodsPrice((*iUL).second->ID);
         }
     }
     return true;

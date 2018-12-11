@@ -36,21 +36,20 @@ DWORD MainCycleThread(LPDWORD lpdwParam)
     int ParamBufLen = 16384;
     int ParamLen;
 
-    LogMessage("BIZ service Started.", ML_WRK1);
+    LogMessage("BIZ service started.");
 
     ParamBuf = (char*)malloc(ParamBufLen);
     BIZClient = new tBIZ_Client();
     BIZClient->SetCookiesPath(ExecPath);
-	BIZClient->TOR_SetUp("127.0.0.1", 9170, 9171);
-	BIZClient->TOR_On();
-	BIZClient->ChangeEntryPoint();
+    BIZClient->TOR_SetUp("127.0.0.1", 9170, 9171);
+    BIZClient->TOR_On();
+    BIZClient->ChangeEntryPoint();
 
     // если клиент создан, пытаемся получить учетку
     if (BIZClient && BIZClient->LoadPerson(PID)) {
+        snprintf(s, sizeof(s), "сервер %s учетная запись %s ", BIZClient->ServerName.c_str(), BIZClient->UserLogin.c_str());
+        LogMessage(s);
 
-
-		snprintf(s, sizeof(s), "сервер %s учетная запись %s ", BIZClient->ServerName.c_str(), BIZClient->UserLogin.c_str());
-		LogMessage(s);
 		/*
 		// логинимся, если надо
 		LoginOk = BIZClient->CheckLogin();
@@ -58,19 +57,21 @@ DWORD MainCycleThread(LPDWORD lpdwParam)
 			LoginOk = BIZClient->Login();
 		*/
 
-		//BIZClient->GetCompanyInfo();
-        //BIZClient->SetGoodsPrice(1854438, NULL);
-        //BIZClient->SetGoodsPrice(1901385, NULL);
+        //BIZClient->GetCompanyInfo();
+        //BIZClient->SetGoodsPrice(1712842);
+        //BIZClient->SetGoodsPrice(1901385);
         //BIZClient->AutoPurchaseGoods(1901385, 10);
-        //BIZClient->SetGoodsPrice(1901385, NULL);
+        //BIZClient->SetGoodsPrice(1901385);
         //BIZClient->AutoPurchaseGoods(1915773, 10);
-        //BIZClient->SetGoodsPrice(1901352, NULL);
+        //BIZClient->SetGoodsPrice(1901352);
         //BIZClient->AutoPurchaseForMarkets(3);
         //BIZClient->AutoPurchaseGoods(1901352, 7);
         //BIZClient->Test2();
 
 		//sprintf(s, "%sbizdb_home.sdb", ExecPath);
-		//BIZClient->Test3(s);
+	  //BIZClient->Test3(s);
+
+
 
         // основной цыкл (крутится пока не остановить сервис)
         while (!bMainThreadStopped) {
@@ -109,7 +110,7 @@ DWORD MainCycleThread(LPDWORD lpdwParam)
 
                     case 3:             // - выставить цены для магазинов -
                         if (ParamI1) {
-                            BIZClient->SetGoodsPrice(ParamI1, NULL);
+                            BIZClient->SetGoodsPrice(ParamI1);
                         }
                         else
                             BIZClient->SetGoodsPriceForAllMarkets();
@@ -227,6 +228,14 @@ int BCService_Start(int argc, char **argv)
 #endif
     SetLogPath(s);                                  // Указываем, куда писать логи
 #endif
+    LogMessage(" ");
+    LogMessage("========================================================================================", ML_WRK1);
+    sprintf(s, "BIZ Service (build %s %s)", __DATE__, __TIME__);
+    LogMessage(s);
+    LogMessage("starting service...", ML_WRK2);
+
+    sprintf(s, "ExecPath: %s", ExecPath);
+    LogMessage(s, ML_DBG1);
 
     // ЗУказываем, где лежит база данных
     sprintf(s, "%sbizdb.sdb", ExecPath);
@@ -236,10 +245,6 @@ int BCService_Start(int argc, char **argv)
         DB_GetDBContext();
 
         // Сообщаем о запуске сервиса
-        LogMessage("========================================================================================", ML_WRK1);
-        LogMessage("starting BIZ service...", ML_WRK2);
-        sprintf(s, "ExecPath: %s", ExecPath);
-        LogMessage(s, ML_DBG1);
 
         // cсоздаем основную нитку 
         bMainThreadStopped = false;

@@ -115,9 +115,9 @@ CREATE TABLE options(
 CREATE TABLE Factors(
 	Type		INTEGER NOT NULL,	-- тип коэффициент
 	Object		INTEGER NOT NULL,	-- идентификатор объекта (например ID товара ,0xFFFF - все товары, 0xFENN NN- ID группы товара, 0xFDNN NN- ID массива для перечня товаров)
-	LocationType	INTEGER NOT NULL,	-- где применять (1-магазин, 2-город, 3-страна, 0xFF-везде, 0-для группы магазинов из массива)
+	LocationType	INTEGER NOT NULL,	-- где применять (1-магазин, 2-город, 3-регион, 4-страна, 5-для всей компании, 10-для группы магазинов из массива)
 	Location	INTEGER NOT NULL,	-- идентификатор локации (ID магазина, или ID массива)
-	Value		REAL NOT NULL,		-- величина коэффициента
+	int		INTEGER NOT NULL		-- величина коэффициента
 )
 
 --INSERT INTO Factors (Type,Object,LocationType,Location,Value) VALUES ();
@@ -132,11 +132,18 @@ CREATE TABLE FactorsTypeDescrioption(
 	Desription	TEXT,			-- описание коэффициента
 	DesriptionExt	TEXT			-- описание коэффициента
 )
-INSERT INTO FactorsTypeDescrioption (Type,Name,Unit,Desription,DesriptionExt) VALUES(1,"QualityOverpricing","%","Закупочное качество","На сколько % качество закупаемого в магазине товара должно быть выше среднего");
-INSERT INTO FactorsTypeDescrioption (Type,Name,Unit,Desription,DesriptionExt) VALUES(1,"MaxPurchasePriceExcess","%","Закупочное качество","На сколько % качество закупаемого в магазине товара должно быть выше среднего");
---INSERT INTO FactorsTypeDescrioption (Type,Name,Unit,Desription,DesriptionExt) VALUES(,"","","","");
---INSERT INTO FactorsTypeDescrioption (Type,Name,Unit,Desription,DesriptionExt) VALUES(,"","","","");
---INSERT INTO FactorsTypeDescrioption (Type,Name,Unit,Desription,DesriptionExt) VALUES(,"","","","");
+
+INSERT INTO FactorsTypeDescrioption (Type,Name,Unit,Desription,DesriptionExt) VALUES(1,"Price","","","Цена продукта (товара)");
+INSERT INTO FactorsTypeDescrioption (Type,Name,Unit,Desription,DesriptionExt) VALUES(2,"Price Dumping","%","Превышение над средней ценой","На сколько процентов больше нужно выставить цену продуктов при корректироваке цены (-99% .. +99%)");
+INSERT INTO FactorsTypeDescrioption (Type,Name,Unit,Desription,DesriptionExt) VALUES(3,"Price Permitted Excess","%","Максимальное превышение цены над средней","На сколько процентов цена на продукт может превышать среднюю цену по городу (-99% .. +99%)");
+INSERT INTO FactorsTypeDescrioption (Type,Name,Unit,Desription,DesriptionExt) VALUES(4,"Quality","","Качество","Необходимое качество продукта");
+INSERT INTO FactorsTypeDescrioption (Type,Name,Unit,Desription,DesriptionExt) VALUES(5,"Quality Dumping","%","Превышение качества","На сколько процентов лучше по качеству продукты нужно пытаться закупать (-99% .. +99%)");
+INSERT INTO FactorsTypeDescrioption (Type,Name,Unit,Desription,DesriptionExt) VALUES(6,"Quality Minimum","","Минимальное качество","Минимальное допустимое качество для магазина");
+INSERT INTO FactorsTypeDescrioption (Type,Name,Unit,Desription,DesriptionExt) VALUES(7,"Quality Maximum","","Максимальное качество","Максимальное допустимое качество для магазина");
+INSERT INTO FactorsTypeDescrioption (Type,Name,Unit,Desription,DesriptionExt) VALUES(8,"Quality Minimum Dumping","%","Минимальное занижение качества","Минимальное допустимое качество для магазина относительно среднего");
+INSERT INTO FactorsTypeDescrioption (Type,Name,Unit,Desription,DesriptionExt) VALUES(9,"Quality Maximum Dumping","%","Максимальное завышение качества","Максимальное допустимое качество для магазина относительно среднего");
+
+
 
 -- Таблица для хранения массивов
 CREATE TABLE Arrays(
