@@ -387,6 +387,8 @@ bool BIZ_ParsePrice(char *str, float &Price, int &Currency)
 }
 
 //-----------------------------------------------------------------------------
+// Ищет закрывающий тег вида </tag>
+// учитывая возможные вложения тега
 //-----------------------------------------------------------------------------
 char* FindCloseTag(char* str, char* tag)
 {
@@ -418,6 +420,42 @@ char* FindCloseTag(char* str, char* tag)
     }while ((0 != opencount) && (pctc));
 
     return res;
+}
+
+
+//-----------------------------------------------------------------------------
+// Копирует строку между двух указателей в буфер
+// ptr1 - указывает на символ в начале строки (копируется, начиная с этого символа)
+// ptr1 - указывает на символ следующий за коном строки (копируется строка до этого символа)
+//-----------------------------------------------------------------------------
+int CopyStrBetween(char* Buf, int BufLen, char *ptr1, char *ptr2)
+{
+    int res = 0;
+    int len = 0;
+    char *pc1, *pc2;
+    if (!Buf) return res;
+    if (BufLen < 1) return res;
+
+    memset(Buf, 0, BufLen);
+
+    if (!ptr1) return res;
+    if (!ptr2) return res;
+
+    pc1 = strstr(ptr1, "<span");
+    if (pc1 && pc1 < ptr2) {
+        pc1 = strchr(pc1 + 1, '>');
+        if (!pc1) return res;               // патамушто такого не должно быть
+        pc1++;
+        ptr1 = pc1;
+        pc2 = FindCloseTag(pc1, "span");
+        if (pc2) if (pc2 < ptr2) ptr2 = pc2;
+    }
+
+    len = ptr2 - ptr1;
+    if (len < 1) return res;
+    if (len > BufLen) len = BufLen;
+    memcpy(Buf, ptr1, len);
+    return len;
 }
 
 //-----------------------------------------------------------------------------
@@ -1216,7 +1254,8 @@ int BIZ_ParseVendors(char* Page, TVendorList *Vendors)
             pct1 += 1;
             pct2 = strstr(pct1, "</a>");
             if (!pct2) continue;
-            memcpy(fVName, pct1, pct2 - pct1);
+            //memcpy(fVName, pct1, pct2 - pct1);
+            CopyStrBetween(fVName, sizeof(fVName), pct1, pct2);
 
             // Ищем название и код города
             fCityID = 0;
@@ -1245,7 +1284,9 @@ int BIZ_ParseVendors(char* Page, TVendorList *Vendors)
             pct1 += 2;
             pct2 = strstr(pct1, "</a>");
             if (!pct2) continue;
-            memcpy(fCName, pct1, pct2 - pct1);
+            //memcpy(fCName, pct1, pct2 - pct1);
+            CopyStrBetween(fCName, sizeof(fCName), pct1, pct2);
+
 
             // Ищем кол-во на складе
             pct1 = strstr(pct2, "<td");
@@ -1256,8 +1297,9 @@ int BIZ_ParseVendors(char* Page, TVendorList *Vendors)
             pct1 += 1;
             pct2 = strstr(pct1, "</td>");
             if (!pct2) continue;
-            memset(ts, 0, sizeof(ts));
-            memcpy(ts, pct1, pct2 - pct1);
+            //memset(ts, 0, sizeof(ts));
+            //memcpy(ts, pct1, pct2 - pct1);
+            CopyStrBetween(ts, sizeof(ts), pct1, pct2);
             fInStock = atoi(SpaceRemove(ts));
 
             // Ищем качество
