@@ -24,14 +24,18 @@ tBIZ_Client::~tBIZ_Client()
 bool tBIZ_Client::LoadPerson(int PID)
 {
     bool res = false;
-    std::string login, psw, srv;
-    int pxl, cid;
+    std::string login, psw, srv, torip;
+    int pxl, cid, torport, torcmdport;
 
-    if (DB_GetPerson(PID, srv, login, psw, pxl, cid)) {
+    if (DB_GetPerson(PID, srv, login, psw, pxl, cid, torip, torport, torcmdport)) {
         ServerName = srv;
         UserLogin = login;
         UserPassword = psw;
         PersonCompanyID = cid;
+        if (torport) {
+            TOR_SetUp((char*)torip.c_str(), torport, torcmdport);
+            TOR_On();
+        }
         res = true;
     }
     return res;

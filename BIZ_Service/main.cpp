@@ -11,8 +11,9 @@
 
 char ExecPath[256]="";
 
-HANDLE hMainThread = NULL;       // Handle to thread implementing MainForm cycle
-bool bMainThreadStopped = false; // set to true to stop Main thread
+HANDLE hMainThread = NULL;          // Handle to thread implementing MainForm cycle
+bool bMainThreadStopped = false;    // set to true to stop Main thread
+int PID = 4;                        // PersonID - id юзер в базе данных, для которого запускается сервис
 
 
 
@@ -21,7 +22,6 @@ bool bMainThreadStopped = false; // set to true to stop Main thread
 //-----------------------------------------------------------------------------
 DWORD MainCycleThread(LPDWORD lpdwParam)
 {
-    int PID = 4;
     char s[1024];
     clock_t tstart = clock();
     clock_t tnow;
@@ -41,14 +41,15 @@ DWORD MainCycleThread(LPDWORD lpdwParam)
     ParamBuf = (char*)malloc(ParamBufLen);
     BIZClient = new tBIZ_Client();
     BIZClient->SetCookiesPath(ExecPath);
-    BIZClient->TOR_SetUp("127.0.0.1", 9170, 9171);
-    BIZClient->TOR_On();
-    BIZClient->ChangeEntryPoint();
+    //BIZClient->TOR_SetUp("127.0.0.1", 9170, 9171);
+    //BIZClient->TOR_On();
+    //BIZClient->ChangeEntryPoint();
 
     // если клиент создан, пытаемся получить учетку
     if (BIZClient && BIZClient->LoadPerson(PID)) {
         snprintf(s, sizeof(s), "сервер %s учетная запись %s ", BIZClient->ServerName.c_str(), BIZClient->UserLogin.c_str());
         LogMessage(s);
+        BIZClient->ChangeEntryPoint();
 
 		/*
 		// логинимся, если надо
@@ -194,6 +195,17 @@ int BCService_Start(int argc, char **argv)
     DWORD dwThreadId;
     int ErrCod = 0;
     char *pC;
+    int i;
+    char ts[32];
+    int tPID = 0;
+
+    // Определяем параметры запуска
+    for (i = 0; i < argc; i++) if ( (pC = strstr(strupr(argv[i]), "/PID=")) != NULL) {
+        memset(ts, 0, sizeof(ts));
+        strncpy(ts, pC+5, sizeof(ts)-1);
+        tPID = atoi(ts);
+        if (tPID) PID = tPID;
+    }
 
     // Определяем путь к запускаемому файлу 
 #ifdef _LINUX_

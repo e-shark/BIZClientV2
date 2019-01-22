@@ -115,14 +115,14 @@ void DB_CloseDBC(DB_DBC* DBC) {
 //-----------------------------------------------------------------------------
 //  Получить данные персонажа по ID
 //-----------------------------------------------------------------------------
-int DB_GetPersonEx(int id, std::string &srv, std::string &login, std::string &psw, int &ProxyList, int &company)
+int DB_GetPersonEx(int id, std::string &srv, std::string &login, std::string &psw, int &ProxyList, int &company, std::string &tor_IP, int &tor_port, int &tor_cmdport)
 {
     int res = 0;
     DB_DBC *DBC = DB_GetDBContext();
     sqlite3_stmt *stmt;
 
     if (DBC) {
-        if (sqlite3_prepare_v2(DBC, "select Server, User, Psw, ProxyList, Company from Person where id = ?1 limit 1; ", -1, &stmt, 0) != SQLITE_OK) goto DB_GetPrsnErr;
+        if (sqlite3_prepare_v2(DBC, "select Server, User, Psw, ProxyList, Company, TOR_IP, TOR_PORT, TOR_cmdPORT from Person where id = ?1 limit 1; ", -1, &stmt, 0) != SQLITE_OK) goto DB_GetPrsnErr;
         if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK)  goto DB_GetPrsnErr;
         if (SQLITE_ROW == sqlite3_step(stmt)) {
             srv = (char*) sqlite3_column_text(stmt, 0);
@@ -130,6 +130,9 @@ int DB_GetPersonEx(int id, std::string &srv, std::string &login, std::string &ps
             psw = (char*)sqlite3_column_text(stmt, 2);
             ProxyList = sqlite3_column_int(stmt, 3);
             company = sqlite3_column_int(stmt, 4);
+            tor_IP = (char*)sqlite3_column_text(stmt, 5);
+            tor_port = sqlite3_column_int(stmt, 6);
+            tor_cmdport = sqlite3_column_int(stmt, 7);
             res = company;
         } else res = 0;
         sqlite3_finalize(stmt);
@@ -147,11 +150,11 @@ DB_GetPrsnErr:
     throw EDBException(msg);
 }
 
-int DB_GetPerson(int id, std::string &srv, std::string &login, std::string &psw, int &ProxyList, int &company)
+int DB_GetPerson(int id, std::string &srv, std::string &login, std::string &psw, int &ProxyList, int &company, std::string &tor_IP, int &tor_port, int &tor_cmdport)
 {
     int res = 0;
     try {
-        res = DB_GetPersonEx(id, srv, login, psw, ProxyList, company);
+        res = DB_GetPersonEx(id, srv, login, psw, ProxyList, company, tor_IP, tor_port, tor_cmdport);
     } catch (EDBException &e) {
         LogMessage(e.Message.c_str(), ML_ERR2);
     }

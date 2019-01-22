@@ -17,7 +17,10 @@ CREATE TABLE Person(
 	User 	  	VARCHAR(50),
 	Psw	  	VARCHAR(50),
 	ProxyList	INTEGER,
-	Company		INTEGER
+	Company		INTEGER,
+	TOR_IP	  	VARCHAR(18) DEFAULT ('127.0.0.1'),
+	TOR_PORT 	INTEGER,
+	TOR_cmdPORT 	INTEGER
 )
 -- для каждого юзера свой список прокси. в списке прокси отмечен предпочитаемый, или всем выставлены сигнатуры (с наименьшей сигнатурой предпочитаемый)
 
