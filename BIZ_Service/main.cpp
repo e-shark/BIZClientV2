@@ -13,7 +13,7 @@ char ExecPath[256]="";
 
 HANDLE hMainThread = NULL;          // Handle to thread implementing MainForm cycle
 bool bMainThreadStopped = false;    // set to true to stop Main thread
-int PID = 4;                        // PersonID - id юзер в базе данных, для которого запускается сервис
+int PID = 7;                        // PersonID - id юзер в базе данных, для которого запускается сервис
 
 
 
@@ -69,15 +69,15 @@ DWORD MainCycleThread(LPDWORD lpdwParam)
         //BIZClient->AutoPurchaseGoods(1901352, 7);
         //BIZClient->Test2();
 
-		//sprintf(s, "%sbizdb_home.sdb", ExecPath);
+	  //sprintf(s, "%sbizdb_home.sdb", ExecPath);
 	  //BIZClient->Test3(s);
 
 
 
-        // основной цыкл (крутится пока не остановить сервис)
+        // основной цикл (крутится пока не остановить сервис)
         while (!bMainThreadStopped) {
             // пытаемся получить следующую задачу к выполнению
-            SchedID = DB_GetShedule(BIZClient->PersCID(), SchedType, ParamI1, ParamI2, ParamStr, ParamBuf, ParamBufLen, ParamLen);
+            SchedID = DB_GetSheduleForCID(BIZClient->PersCID(), SchedType, ParamI1, ParamI2, ParamStr, ParamBuf, ParamBufLen, ParamLen);
             if (SchedID) {
                 sprintf(s, "*** Выполняю задание %d (type %d)", SchedID, SchedType);
                 LogMessage(s, ML_WRK1);
@@ -86,6 +86,14 @@ DWORD MainCycleThread(LPDWORD lpdwParam)
                 // !!!  Предложение  !!!
                 // На самом деле, тут надо создавать отдельную нитку с заданием
                 // запускать таймер, и по прошествии таймера, если нитка еще не завершилась, килять её
+                // ---------------------
+
+                // ---------------------
+                // !!!  Предложение  !!!
+                // Перед началом выполнения задания проверить наличие сети
+                // и если нет выхода в инет, попробовать его поднять
+                // Если поднять не удалось, то не пытаться выполнять задание (бо бесполезно кроме задачи слияния базы)
+                // и следовательно не двигать метку последнего запуска задания
                 // ---------------------
 
                 try {

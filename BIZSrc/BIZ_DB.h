@@ -23,8 +23,8 @@ void DB_CloseDBC(DB_DBC* DBC);
 int DB_GetPerson(int id, std::string &srv, std::string &login, std::string &psw, int &ProxyList, int &company, std::string &tor_IP, int &tor_port, int &tor_cmdport);
 int DB_GetPersonEx(int id, std::string &srv, std::string &login, std::string &psw, int &ProxyList, int &company, std::string &tor_IP, int &tor_port, int &tor_cmdport);
 
-int DB_GetShedule(int cid, int &type, int &ParamI1, int &ParamI2, std::string &ParamStr, void *ParamBin, int ParamBinBufLen, int &ParamBinLen);
-int DB_GetSheduleEx(int cid, int &type, int &ParamI1, int &ParamI2, std::string &ParamStr, void *ParamBin, int ParamBinBufLen, int &ParamBinLen);
+int DB_GetSheduleForCID(int cid, int &type, int &ParamI1, int &ParamI2, std::string &ParamStr, void *ParamBin, int ParamBinBufLen, int &ParamBinLen);
+int DB_GetSheduleForCIDEx(int cid, int &type, int &ParamI1, int &ParamI2, std::string &ParamStr, void *ParamBin, int ParamBinBufLen, int &ParamBinLen);
 
 int DB_SetShedule(int cid, int type, time_t start, int period, void *Param, int ParamBufLen, char* Desription);
 int DB_SetSheduleEx(int cid, int type, time_t start, int period, void *Param, int ParamBufLen, char* Desription);

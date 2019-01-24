@@ -168,7 +168,7 @@ int DB_GetPerson(int id, std::string &srv, std::string &login, std::string &psw,
 //  в буфер Param параметры задани€ (двоична€ структура данных)
 //  ParamLen - размер данных в параметре (не более ParamBufLen)
 //-----------------------------------------------------------------------------
-int DB_GetSheduleEx(int cid, int &type, int &ParamI1, int &ParamI2, std::string &ParamStr, void *ParamBin, int ParamBinBufLen, int &ParamBinLen)
+int DB_GetSheduleForCIDEx(int cid, int &type, int &ParamI1, int &ParamI2, std::string &ParamStr, void *ParamBin, int ParamBinBufLen, int &ParamBinLen)
 {
     int res = 0;
     DB_DBC *DBC = DB_GetDBContext();
@@ -222,11 +222,86 @@ DB_GetSchedErr:
 
 }
 
-int DB_GetShedule(int cid, int &type, int &ParamI1, int &ParamI2, std::string &ParamStr, void *ParamBin, int ParamBinBufLen, int &ParamBinLen)
+int DB_GetSheduleForCID(int cid, int &type, int &ParamI1, int &ParamI2, std::string &ParamStr, void *ParamBin, int ParamBinBufLen, int &ParamBinLen)
 {
     int res = 0;
     try {
-        res = DB_GetSheduleEx(cid, type, ParamI1, ParamI2, ParamStr, ParamBin, ParamBinBufLen, ParamBinLen);
+        res = DB_GetSheduleForCIDEx(cid, type, ParamI1, ParamI2, ParamStr, ParamBin, ParamBinBufLen, ParamBinLen);
+    }
+    catch (EDBException &e) {
+        LogMessage(e.Message.c_str(), ML_ERR2);
+    }
+    return res;
+}
+
+
+//-----------------------------------------------------------------------------
+//  ѕолучить очередное задание (дл€ любой компании)
+//  ¬озвращает ID задани€. ј так-же:
+//  pid - ID персоны
+//  type - тип задани€
+//  в буфер Param параметры задани€ (двоична€ структура данных)
+//  ParamLen - размер данных в параметре (не более ParamBufLen)
+//-----------------------------------------------------------------------------
+int DB_GetSheduleEx(int &pid, int &type, int &ParamI1, int &ParamI2, std::string &ParamStr, void *ParamBin, int ParamBinBufLen, int &ParamBinLen)
+{
+    int res = 0;
+    DB_DBC *DBC = DB_GetDBContext();
+    sqlite3_stmt *stmt;
+    int id;
+    int n;
+    char *pC;
+    char select[2024] =
+        "select ID , Type, ParamI1, ParamI2, ParamStr, ParamBin "
+        "from Schedule "
+        "where ( CID > 0 ) "
+        "  and ( Disabled=0 or Disabled is null ) "
+        "  and ( Start <= datetime('now', 'localtime') ) "
+        "  and ( (datetime(LastRun, '+'||Period||' minutes') <= datetime('now', 'localtime')) or LastRun is null ) "
+        "order by LastRun "
+        "limit 1; ";
+
+    if (DBC) {
+        if (sqlite3_prepare_v2(DBC, select, -1, &stmt, 0) != SQLITE_OK) goto DB_GetSchedErr;
+        //if (sqlite3_bind_int(stmt, 1, cid) != SQLITE_OK)  goto DB_GetSchedErr;
+        if (SQLITE_ROW == sqlite3_step(stmt)) {
+            res = sqlite3_column_int(stmt, 0);
+            type = sqlite3_column_int(stmt, 1);
+            ParamI1 = sqlite3_column_int(stmt, 2);
+            ParamI2 = sqlite3_column_int(stmt, 3);
+            pC = (char*)sqlite3_column_text(stmt, 4);
+            if (pC) ParamStr = pC;
+            else ParamStr = "";
+            n = sqlite3_column_bytes(stmt, 5);
+            if ((ParamBin) && (ParamBinBufLen)) {
+                if (n > ParamBinBufLen) n = ParamBinBufLen;
+                memcpy(ParamBin, sqlite3_column_blob(stmt, 5), n);
+                ParamBinLen = n;
+            }
+            else ParamBinLen = 0;
+        }
+        else res = 0;
+        sqlite3_finalize(stmt);
+    }
+    DB_CloseDBC(DBC);
+    return res;
+
+DB_GetSchedErr:
+    char msg[1024];
+    int ercod;
+    ercod = sqlite3_errcode(DBC);
+    snprintf(msg, sizeof(msg) - 1, "DB_GetShedule Error.(%d: %s)", ercod, sqlite3_errmsg(DBC));
+    sqlite3_finalize(stmt);
+    sqlite3_close(DBC);
+    throw EDBException(msg);
+
+}
+
+int DB_GetShedule(int &pid, int &type, int &ParamI1, int &ParamI2, std::string &ParamStr, void *ParamBin, int ParamBinBufLen, int &ParamBinLen)
+{
+    int res = 0;
+    try {
+        res = DB_GetSheduleEx(pid, type, ParamI1, ParamI2, ParamStr, ParamBin, ParamBinBufLen, ParamBinLen);
     }
     catch (EDBException &e) {
         LogMessage(e.Message.c_str(), ML_ERR2);
@@ -525,6 +600,8 @@ std::string DB_GetFactorLocationTypeStr(int LocationType)
 //      5 - Quality Dumping = 2;                // Ќа сколько процентов лучше по качеству продукты нужно пытатьс€ закупать (-99% .. +99%)
 //      6 - Quality Minimum                     // ћинимальное допустимое качество дл€ магазина
 //      7 - Quality Maximum                     // ћаксимальное допустимое качество дл€ магазина
+//      8 - Quality Min Limit                   // ћинимальный допуск качаства в процентах от среднего
+//      9 - Quality Max Limit                   // ћаксимальный допуск качаства в процентах от среднего
 // ¬иды LocationType
 //      1 - дл€ магазина
 //      2 - дл€ города

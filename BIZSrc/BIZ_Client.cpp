@@ -1048,6 +1048,7 @@ float tBIZ_Client::AutoPurchaseGoods(int unitId, int Days)
     int Num;
     bool bPrcshAnwy = false;
     float fCost = 0.0;
+    int QMinLimit = -10, QMaxLimit = 10;               // На сколько процентов качество закупаемого товара может быть ниже или выше требуемого
 
     bool  fPurchaseAnyway = false;                 // Закуапать в лбом случае, даже некачественный товар (требуется, если рынок совсем мертвый)
 
@@ -1103,7 +1104,7 @@ x3:
         else
             bPrcshAnwy = false;
 
-        VL->SelectForOrder(VL->fAverageQuality * (1.0 + fQualityOverpricing / 100.0), Num, bPrcshAnwy, fMaxPurchasePriceExcess);
+        VL->SelectForOrder(VL->fAverageQuality * (1.0 + fQualityOverpricing / 100.0), Num, bPrcshAnwy, fMaxPurchasePriceExcess, QMinLimit, QMaxLimit);
         if (ExecuteOreder(unitId, VL, &fCost)) {
             s = " Автозакупка в магазине id=";
             s += IntToStr(unitId);

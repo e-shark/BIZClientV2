@@ -446,6 +446,7 @@ void TVendorList::ArrangeFlagsV2(unsigned int deep)
 //-----------------------------------------------------------------------------
 int __fastcall TVendorList::SelectForOrder(float Quality, int Number,
     bool PurchaseAnyway, float MaxPurchasePriceExcess,
+    int QMinLimit, int QMaxLimit,
     int maxDeliv, int minDeliv)
 {
     int iSt = -1;
@@ -453,8 +454,9 @@ int __fastcall TVendorList::SelectForOrder(float Quality, int Number,
     int iLow = -1;
     float mAverageQuality;
     int NAhi, NAlow;
-    float Qs, Qn;
-    int Ns;
+    float Qs;           //  ачество товара на складе
+    float Qn;           //  ачество товара, которое нужно докупить, с учетом того товара, который уже есть на складе
+    int Ns;             //  оличество товара на складе
     float dQhi, dQlow;
     float Qhi, Qlow;
     int Nhi = 0, Nlow = 0;
@@ -480,8 +482,8 @@ int __fastcall TVendorList::SelectForOrder(float Quality, int Number,
     // –асчитываем сколько и какого качества нужно приобрести товара
     // исход€ из требований к качеству итогового товара, и наличи€ товара на складе
     if (iSt >= 0) {
-        Qs = GetVendor(iSt)->Quality;
-        Ns = GetVendor(iSt)->InStock;
+        Qs = GetVendor(iSt)->Quality;           //  ачество товара на складе
+        Ns = GetVendor(iSt)->InStock;           //  ол-во товара на складе
     }
     else {        // на складе нет товара
         Qs = 0;
@@ -565,8 +567,7 @@ int __fastcall TVendorList::SelectForOrder(float Quality, int Number,
     else {
         // ¬ариант, когда есть только один товар (или плохого, или хорошего качества)
         // имеет смысл только если им можно подн€ть качество товара нв складе магазина
-        if (Ns>0) {
-
+        if (Ns>0) {         // если на складе есть товар
             if ((NAhi>0) && (Qs < Quality)) {
                 if (dQhi > 0.0001)                                                     // защищаемс€ от делени€ на 0
                     Nhi = Ns * (Qs - Quality) / (Quality - Qhi);
@@ -581,6 +582,24 @@ int __fastcall TVendorList::SelectForOrder(float Quality, int Number,
                     Nlow = Number;
             }
 
+        }
+        // или если товар подходит по лимитам качества, то вз€ть хот€ бы это (все лучше, чем ничего)
+        if ((0 == Nhi) && (0 == Nlow)) {                            // если пока еще ничего не выбрано к заказу
+            // выбираем хоть что-то, лижбы попадало в рамки лимитов
+            if  (NAhi > 0) {
+                int NWhi = Number;                                          // —колько нужно дозаказать продукта
+                if (NWhi > NAhi) NWhi = NAhi;                               // —колько получитс€ заказать, учитыва€, сколько есть на складе поставщика
+                float QWHi = (Qhi* NWhi + Qs*Ns) / (NWhi + Ns);             //  акого качества получитс€ товар на складе итоговый после заказа
+                if( (QWHi > Quality*(1.0 + QMinLimit/100.0)) && (QWHi < Quality*(1.0 + QMaxLimit / 100.0)) )    // ≈сли ав итоге попадаем в рамки лимитов
+                    Nhi = NWhi;                                                                  // то нада брать
+            }else
+            if (NAlow > 0) {
+                int NWlow = Number;                                         // —колько нужно дозаказать продукта
+                if (NWlow > NAlow) NWlow = NAhi;                            // —колько получитс€ заказать, учитыва€, сколько есть на складе поставщика
+                float QWlow = (Qlow* NWlow + Qs * Ns) / (NWlow + Ns);       //  акого качества получитс€ товар на складе итоговый после заказа
+                if ((QWlow > Quality*(1.0 + QMinLimit / 100.0)) && (QWlow < Quality*(1.0 + QMaxLimit / 100.0)))    // ≈сли ав итоге попадаем в рамки лимитов
+                    Nhi = NWlow;                                                                  // то нада брать
+            }
         }
     }
 

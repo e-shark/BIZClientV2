@@ -1197,7 +1197,7 @@ int BIZ_ParseVendors(char* Page, TVendorList *Vendors)
     std::string strname;
     int res = 0;
     char *pBegin, *pEnd, *pRow;
-    char *pct1, *pct2;
+    char *pct1, *pct2, *pcte;
     char ts[32];
     int l;
     char ls[1000];
@@ -1271,25 +1271,31 @@ int BIZ_ParseVendors(char* Page, TVendorList *Vendors)
             }
 
             // Ищем Название URI компании поставщика
-            pct1 = strstr(pct2, "href=\"/company/?id=");
+            memset(fCURI, 0, sizeof(fCURI));
+            pct1 = strstr(pct2, "\"company_");
             if (!pct1) continue;
-            pct1 += 6;
-            pct2 = strchr(pct1, '"');
-            if (!pct2) continue;
-            memcpy(fCURI, pct1, pct2 - pct1);
+            pcte = FindCloseTag(pct1 + 10, "td");
+            pct2 = pct1;
+            pct1 = strstr(pct1, "href=\"/company/?id=");
+            if (pct1) {                                     // этой ссылки не будет у склада "независимой" компании для обучающих этоапов компании
+                pct1 += 6;
+                pct2 = strchr(pct1, '"');
+                if (!pct2) continue;
+                memcpy(fCURI, pct1, pct2 - pct1);
+            }
 
             // Ищем Название компании поставщика
-            pct1 = strstr(pct1, "\">");
+            pct1 = strstr(pct2+3, ">");
             if (!pct1) continue;
-            pct1 += 2;
-            pct2 = strstr(pct1, "</a>");
+            pct1 += 1;
+            pct2 = strstr(pct1, "<");
             if (!pct2) continue;
             //memcpy(fCName, pct1, pct2 - pct1);
             CopyStrBetween(fCName, sizeof(fCName), pct1, pct2);
 
 
             // Ищем кол-во на складе
-            pct1 = strstr(pct2, "<td");
+            pct1 = strstr(pcte+3, "<td");
             if (!pct1) continue;
             pct1 += 3;
             pct1 = strchr(pct1 + 20, '>');
