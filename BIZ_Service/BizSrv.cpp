@@ -7,8 +7,7 @@
 
 char DB[256];
 char SRVFullName[256];
-
-char* ServiceName = "BIZ_Service";                                  // Имя сервиса
+char ServiceName[50];                                                // Имя сервиса
 bool bConsole = false;                                              // Флаг запуска сервиса
 
 SERVICE_TABLE_ENTRY ServiceTable[1];
@@ -213,9 +212,14 @@ int main(int argc, char* argv[])
 {
 	int i;
 	char *pC;
+      char ts[20];
+      int tPID;
 
       if (GetModuleFileName(NULL, SRVFullName, sizeof(SRVFullName)) == 0)
         memset(SRVFullName, 0, sizeof(SRVFullName));
+
+      memset(ServiceName, 0, sizeof(ServiceName));
+      snprintf(ServiceName, sizeof(ServiceName)-1, "BIZ_Service");
 
 	// Определяем параметры запуска
 	DB[0] = 0;
@@ -230,6 +234,14 @@ int main(int argc, char* argv[])
       for (i = 0; i < argc; i++) if (strstr(strupr(argv[i]), "/C") != NULL) {
           bConsole = true;
           break;
+      }
+
+      for (i = 0; i < argc; i++) if ((pC = strstr(strupr(argv[i]), "PID=")) != NULL) {
+          memset(ts, 0, sizeof(ts));
+          strncpy(ts, pC + 4, sizeof(ts) - 1);
+          tPID = atoi(ts);
+          if (tPID)
+              snprintf(ServiceName, sizeof(ServiceName) - 1, "BIZ_Service_%d", tPID);
       }
 
       for (i = 0; i<argc; i++) if (strstr(strupr(argv[i]), "INSTALL") != NULL) {

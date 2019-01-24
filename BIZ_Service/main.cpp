@@ -208,9 +208,9 @@ int BCService_Start(int argc, char **argv)
     int tPID = 0;
 
     // Определяем параметры запуска
-    for (i = 0; i < argc; i++) if ( (pC = strstr(strupr(argv[i]), "/PID=")) != NULL) {
+    for (i = 0; i < argc; i++) if ( (pC = strstr(strupr(argv[i]), "PID=")) != NULL) {
         memset(ts, 0, sizeof(ts));
-        strncpy(ts, pC+5, sizeof(ts)-1);
+        strncpy(ts, pC+4, sizeof(ts)-1);
         tPID = atoi(ts);
         if (tPID) PID = tPID;
     }
