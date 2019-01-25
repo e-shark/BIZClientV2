@@ -13,7 +13,7 @@ char ExecPath[256]="";
 
 HANDLE hMainThread = NULL;          // Handle to thread implementing MainForm cycle
 bool bMainThreadStopped = false;    // set to true to stop Main thread
-int PID = 7;                        // PersonID - id юзер в базе данных, для которого запускается сервис
+extern int PID;                        // PersonID - id юзер в базе данных, для которого запускается сервис
 
 
 
@@ -186,7 +186,7 @@ DWORD MainCycleThread(LPDWORD lpdwParam)
     }
 
     free(ParamBuf);
-    LogMessage("BCservice Stoped.", ML_WRK1);
+    LogMessage("BIZ service Stoped.", ML_WRK1);
     return 0;
 }
 
@@ -205,15 +205,11 @@ int BCService_Start(int argc, char **argv)
     char *pC;
     int i;
     char ts[32];
-    int tPID = 0;
 
     // Определяем параметры запуска
-    for (i = 0; i < argc; i++) if ( (pC = strstr(strupr(argv[i]), "PID=")) != NULL) {
-        memset(ts, 0, sizeof(ts));
-        strncpy(ts, pC+4, sizeof(ts)-1);
-        tPID = atoi(ts);
-        if (tPID) PID = tPID;
-    }
+    /*тут пока нет параметров*/
+
+    if (0 == PID) PID = 4;  // для отладки, если не задан PID, задаем его
 
     // Определяем путь к запускаемому файлу 
 #ifdef _LINUX_
