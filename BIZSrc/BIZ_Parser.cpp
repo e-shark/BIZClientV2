@@ -367,7 +367,8 @@ bool BIZ_ParsePrice(char *str, float &Price, int &Currency)
         if (strstr(str, "&euro;")) fCurrency = curEUR;
         if (strstr(str, "И"))      fCurrency = curEUR;
         if (strstr(str, "грн"))    fCurrency = curUAH;
-        if (strstr(str, "р."))     fCurrency = curRUB;
+        if (strstr(str, "р."))     fCurrency = curRUB;      // F0 2E русское р
+        if (strstr(str, "p."))     fCurrency = curRUB;      // 70 2E латинское p
         if (strstr(str, "$"))      fCurrency = curUSD;
         if (strstr(str, "&pound;")) fCurrency = curGBP;
 
