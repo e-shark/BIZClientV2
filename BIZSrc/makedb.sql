@@ -1,6 +1,6 @@
 
 
-CREATE TABLE Person(
+CREATE TABLE PersonOld(
 	ID		INTEGER PRIMARY KEY ASC NOT NULL,
 	Server		TEXT,
 	User 	  	VARCHAR(50),

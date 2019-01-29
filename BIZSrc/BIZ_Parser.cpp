@@ -1201,8 +1201,9 @@ int BIZ_ParseVendors(char* Page, TVendorList *Vendors)
     char *pct1, *pct2, *pcte;
     char ts[32];
     int l;
-    char ls[1000];
+    //char ls[1000];
 
+    int fvID;
     char fVName[100];
     char fVURI[250];
     char fCName[100];
@@ -1229,6 +1230,8 @@ int BIZ_ParseVendors(char* Page, TVendorList *Vendors)
         while ((pRow = strstr(pRow + 7, "<tr id=\"vendorsrow[")) != NULL) {            // Находим следующую строку с поставщиком
             if (pRow>pEnd) break;
 
+
+            fvID = 0;
             memset(fVURI, 0, sizeof(fVURI));
             memset(fVName, 0, sizeof(fVName));
             memset(fCURI, 0, sizeof(fCURI));
@@ -1239,7 +1242,8 @@ int BIZ_ParseVendors(char* Page, TVendorList *Vendors)
             fCost = 0;
             fCityID = 0;
 
-            // Ищем  URI склада поставщика
+            /*
+            // Ищем  URI склада поставщика    (типа /units/factory/?id=2166371)
             pct1 = strstr(pRow, "href=\"/units/");
             if (!pct1) continue;
             pct1 += 6;
@@ -1257,6 +1261,33 @@ int BIZ_ParseVendors(char* Page, TVendorList *Vendors)
             if (!pct2) continue;
             //memcpy(fVName, pct1, pct2 - pct1);
             CopyStrBetween(fVName, sizeof(fVName), pct1, pct2);
+            */
+
+            // Ищем  id поставщика
+            pct1 = strchr(pRow + 1, '[');
+            if (!pct1) continue;
+            pct1 += 1;
+            pct2 = strchr(pct1, ']');
+            if (!pct2) continue;
+            CopyStrBetween(ts, sizeof(ts), pct1, pct2);
+            fvID = atoi(SpaceRemove(ts));
+
+            // Вычисляем  URI склада поставщика     (вида /units/factory/?id=2166371)
+            pct1 = strstr(pct2, "src=\"/img/units");
+            if (!pct1) continue;
+            pct1 += 9;
+            pct2 = strchr(pct1, '.');
+            if (!pct2) continue;
+            CopyStrBetween(ts, sizeof(ts), pct1, pct2);
+            snprintf(fVURI, sizeof(fVURI) - 1, "%s/?id=%d", ts, fvID);
+
+            // Ищем Название склада поставщика
+            pct1 = strstr(pct2, "<span>");
+            if (!pct1) continue;
+            pct1 += 6;
+            pct2 = strstr(pct1, "</span>");
+            if (!pct2) continue;
+            CopyStrBetween(fVName, sizeof(fVName), pct1, pct2);
 
             // Ищем название и код города
             fCityID = 0;
@@ -1271,7 +1302,7 @@ int BIZ_ParseVendors(char* Page, TVendorList *Vendors)
                 }
             }
 
-            // Ищем Название URI компании поставщика
+            // Ищем URI компании поставщика
             memset(fCURI, 0, sizeof(fCURI));
             pct1 = strstr(pct2, "\"company_");
             if (!pct1) continue;
@@ -1322,7 +1353,7 @@ int BIZ_ParseVendors(char* Page, TVendorList *Vendors)
             memcpy(ts, pct1, pct2 - pct1);
             fQuality = atof(ts);
 
-            // Ищем срок поставок
+            // Ищем срок поставок  (необязательный параметр, поскольку срока поставок может и не быть(например дя магазинов))
             fiDelivery = 0;
             pct1 = strstr(pct2, "<td id=\"days_");
             if (pct1) {
