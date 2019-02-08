@@ -347,21 +347,19 @@ int tBIZ_Client::GetcompanyStructure(int cid, tmUnits *Company)
 
 
 //-----------------------------------------------------------------------------
+//  Получить информацию о структуре компании с сервера
 //-----------------------------------------------------------------------------
-bool tBIZ_Client::GetCompanyInfo(void)
+bool tBIZ_Client::RefreshCompanyInfo(void)
 {
     bool result = false;
 
     char URI[256];
     bool getres;
     tHTML_Response *RSP;
-    //tmUnits *Company;
 
     RSP = new tHTML_Response();
     if (Company) delete Company;
     Company = new tmUnits();
-
-    // ... Тут еще надо сперва прочитать главную страницу и определить ID компании для персоны
 
     sprintf(URI, "/company/id/%d", PersonCompanyID);
     getres = GetAuthorizedPage(URI, RSP);
@@ -391,6 +389,20 @@ bool tBIZ_Client::GetCompanyInfo(void)
     return result;
 }
 
+//-----------------------------------------------------------------------------
+//  Прочитать информацию о структуре компании из базы
+//-----------------------------------------------------------------------------
+bool tBIZ_Client::GetDBCompanyInfo(void)
+{
+    bool result = false;
+    if (Company) delete Company;
+    Company = new tmUnits();
+
+    if (DB_GetUnitsList(PersonCompanyID, Company))
+        result = true;
+
+    return result;
+}
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -582,12 +594,9 @@ bool tBIZ_Client::SetGoodsPrice(int unitId)
     tmCityPriceMap CPM;
     tmGoodsList::iterator iGL;
     tmCityPriceMap::iterator iCPM;
-//    tmPriceFactor::iterator iPF;
     float PFactor;
     float Price;
     int i;
-    char sp[5];
-    int p1, p2, p3, p4;
 
     // !!! .... Это потом надо буждет брать из базы
     float fDefaultDumping = -5;                // На сколько процентов больше нужно выставить цену продуктов при корректироваке цены (-99% .. +99%)
@@ -1158,7 +1167,7 @@ bool tBIZ_Client::AutoPurchaseForAllMarkets(int days)
     std::string s;
 
     if (NULL == Company)            // Если нет информации по структуре компании
-        GetCompanyInfo();           // загружаем её
+        GetDBCompanyInfo();           // загружаем её
     for (tmUnits::iterator iUL = Company->begin(); iUL != Company->end(); iUL++) {
         if (2 == (*iUL).second->Type) {
             fCost += AutoPurchaseForMarket((*iUL).second->ID, days);
@@ -1175,7 +1184,7 @@ bool tBIZ_Client::AutoPurchaseForAllMarkets(int days)
 bool tBIZ_Client::SetGoodsPriceForAllMarkets(void)
 {
     if (NULL == Company)            // Если нет информации по структуре компании
-        GetCompanyInfo();           // загружаем её
+        GetDBCompanyInfo();           // загружаем её
     for (tmUnits::iterator iUL = Company->begin(); iUL != Company->end(); iUL++) {
         if (2 == (*iUL).second->Type) {
             SetGoodsPrice((*iUL).second->ID);

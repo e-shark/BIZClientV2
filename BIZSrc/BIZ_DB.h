@@ -38,6 +38,9 @@ bool DB_SaveExchangeStateEx(double PurchasePrice, double SellingPrice, const sSr
 bool DB_SaveUnitsList(int CID, tmUnits *UnitsList);
 bool DB_SaveUnitsListEx(int CID, tmUnits *UnitsList);
 
+int DB_GetUnitsList(int CID, tmUnits *UnitsList);
+int DB_GetUnitsListEx(int CID, tmUnits *UnitsList);
+
 bool DB_ExternExchangeSate(std::string BDName);
 bool DB_ExternExchangeSateEx(std::string BDName);
 

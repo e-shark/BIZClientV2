@@ -138,7 +138,7 @@ DWORD MainCycleThread(LPDWORD lpdwParam)
                         break;
 
                     case 9:            // - Обновить иныормацию о компании -
-                        BIZClient->GetCompanyInfo();
+                        BIZClient->RefreshCompanyInfo();
                         // получить залогининую страницу компании
                         // распарсить и записать в базу структуру компании
                         // распарсить статистику компании

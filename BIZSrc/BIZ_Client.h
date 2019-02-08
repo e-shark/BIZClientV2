@@ -37,7 +37,8 @@ public:
     bool TryGetServerTime(char* Page);
 
     int GetcompanyStructure(int cid, tmUnits *Company);
-    bool GetCompanyInfo(void);
+    bool RefreshCompanyInfo(void);
+    bool GetDBCompanyInfo(void);
 
     // Вычитать информацию по товарам в магазине      
     int GetShopGoodsList(int unitId, tmGoodsList *pGL, tmCityPriceMap *pCPM);

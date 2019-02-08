@@ -1,4 +1,6 @@
 
+#include <windows.h>        // для  MultiByteToWideChar 
+
 #include "BIZ_DB.h"
 #include "BIZ_Exceptions.h"
 #include "BIZ_Types.h"
@@ -44,6 +46,41 @@ static void cp1251_to_utf8(char *out, const char *in) {
     *out = 0;
 }
 
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+std::string Utf8_to_cp1251(const char *str)
+{
+    std::string res;
+    int result_u, result_c;
+
+    result_u = MultiByteToWideChar(CP_UTF8, 0, str, -1, 0, 0);
+
+    if (!result_u) return 0;
+
+    wchar_t *ures = new wchar_t[result_u];
+
+    if (!MultiByteToWideChar(CP_UTF8, 0, str, -1, ures, result_u)) { delete[] ures; return 0; }
+
+    result_c = WideCharToMultiByte( 1251, 0, ures, -1, 0, 0, 0, 0);
+
+    if (!result_c) { 
+        delete[] ures;
+        return 0;
+    }
+
+    char *cres = new char[result_c];
+
+    if (!WideCharToMultiByte( 1251, 0, ures, -1, cres, result_c, 0, 0))
+    {
+        delete[] cres;
+        return 0;
+    }
+    delete[] ures;
+    res.append(cres);
+    delete[] cres;
+    return res;
+}
 //-----------------------------------------------------------------------------
 //  Устанавливае имя файла БД и проверяет его наличие
 //-----------------------------------------------------------------------------
@@ -120,17 +157,20 @@ int DB_GetPersonEx(int id, std::string &srv, std::string &login, std::string &ps
     int res = 0;
     DB_DBC *DBC = DB_GetDBContext();
     sqlite3_stmt *stmt;
+    char *pC;
 
     if (DBC) {
         if (sqlite3_prepare_v2(DBC, "select Server, User, Psw, ProxyList, Company, TOR_IP, TOR_PORT, TOR_cmdPORT from Person where id = ?1 limit 1; ", -1, &stmt, 0) != SQLITE_OK) goto DB_GetPrsnErr;
         if (sqlite3_bind_int(stmt, 1, id) != SQLITE_OK)  goto DB_GetPrsnErr;
         if (SQLITE_ROW == sqlite3_step(stmt)) {
-            srv = (char*) sqlite3_column_text(stmt, 0);
+            pC = (char*) sqlite3_column_text(stmt, 0);
+            srv = (pC ? pC : "bizmania.ru");
             login = (char*)sqlite3_column_text(stmt, 1);
             psw = (char*)sqlite3_column_text(stmt, 2);
             ProxyList = sqlite3_column_int(stmt, 3);
             company = sqlite3_column_int(stmt, 4);
-            tor_IP = (char*)sqlite3_column_text(stmt, 5);
+            pC = (char*)sqlite3_column_text(stmt, 5);
+            tor_IP = (pC ? pC : "");
             tor_port = sqlite3_column_int(stmt, 6);
             tor_cmdport = sqlite3_column_int(stmt, 7);
             res = company;
@@ -173,9 +213,8 @@ int DB_GetSheduleForCIDEx(int cid, int &type, int &ParamI1, int &ParamI2, std::s
     int res = 0;
     DB_DBC *DBC = DB_GetDBContext();
     sqlite3_stmt *stmt;
-    int id;
     int n;
-	char *pC;
+    char *pC;
     char select[2024] =
         "select ID , Type, ParamI1, ParamI2, ParamStr, ParamBin "
         "from Schedule "
@@ -194,9 +233,9 @@ int DB_GetSheduleForCIDEx(int cid, int &type, int &ParamI1, int &ParamI2, std::s
             type = sqlite3_column_int(stmt, 1);
             ParamI1 = sqlite3_column_int(stmt, 2);
             ParamI2 = sqlite3_column_int(stmt, 3);
-			pC = (char*)sqlite3_column_text(stmt, 4);
-			if (pC) ParamStr = pC;
-			else ParamStr = "";
+		pC = (char*)sqlite3_column_text(stmt, 4);
+		if (pC) ParamStr = pC;
+		else ParamStr = "";
             n = sqlite3_column_bytes(stmt, 5);
             if ((ParamBin) && (ParamBinBufLen)) {
                 if (n > ParamBinBufLen) n = ParamBinBufLen;
@@ -396,7 +435,7 @@ DB_SetSchedLastRunErr:
 
 bool DB_SetScheduleLastRun(int SchedID)
 {
-    int res = 0;
+    bool res = false;
     try {
         res = DB_SetScheduleLastRunEx(SchedID);
     }
@@ -412,7 +451,7 @@ bool DB_SetScheduleLastRun(int SchedID)
 //-----------------------------------------------------------------------------
 bool DB_SaveExchangeStateEx(double PurchasePrice, double SellingPrice, const sSrvTime *STime)
 {
-    int res = false;
+    bool res = false;
     DB_DBC *DBC = DB_GetDBContext();
     sqlite3_stmt *stmt;
     char s[32];
@@ -444,7 +483,7 @@ DB_SaveExchStateErr:
 
 bool DB_SaveExchangeState(double PurchasePrice, double SellingPrice, const sSrvTime *STime)
 {
-    int res = false;
+    bool res = false;
     try {
         res = DB_SaveExchangeStateEx(PurchasePrice, SellingPrice, STime);
     }
@@ -455,11 +494,11 @@ bool DB_SaveExchangeState(double PurchasePrice, double SellingPrice, const sSrvT
 }
 
 //-----------------------------------------------------------------------------
-//  
+//  Записать в базу информацию о структуре компании
 //-----------------------------------------------------------------------------
 bool DB_SaveUnitsListEx(int CID, tmUnits *UnitsList)
 {
-    int res = false;
+    bool res = false;
     DB_DBC *DBC = DB_GetDBContext();
     sqlite3_stmt *stmt;
     char s[32];
@@ -477,7 +516,7 @@ bool DB_SaveUnitsListEx(int CID, tmUnits *UnitsList)
 
         for (tmUnits::iterator iUL = UnitsList->begin(); iUL != UnitsList->end(); iUL++) {
             //                                               1    2     3     4     5      6         NULL       7
-            if (sqlite3_prepare_v2(DBC, "insert into Units (UID, PID, Type, City, Name, Company, Corporation, Image) values (?1, ?2, ?3, ?4, ?5, ?6, NULL, ?7); ", -1, &stmt, 0) != SQLITE_OK) goto DB_SaveUnitListErr;
+            if (sqlite3_prepare_v2(DBC, "insert into Units (UID, PID, Type, City, Name, Company, Corporation, Image, URI) values (?1, ?2, ?3, ?4, ?5, ?6, NULL, ?7, ?8); ", -1, &stmt, 0) != SQLITE_OK) goto DB_SaveUnitListErr;
             if (sqlite3_bind_int(stmt, 1, (*iUL).second->ID) != SQLITE_OK) goto DB_SaveUnitListErr;
             if (sqlite3_bind_int(stmt, 2, CID) != SQLITE_OK) goto DB_SaveUnitListErr;
             if (sqlite3_bind_int(stmt, 3, (*iUL).second->Type) != SQLITE_OK) goto DB_SaveUnitListErr;
@@ -486,9 +525,11 @@ bool DB_SaveUnitsListEx(int CID, tmUnits *UnitsList)
             if (sqlite3_bind_text(stmt, 5, bufName, -1, NULL) != SQLITE_OK) goto DB_SaveUnitListErr;
             if (sqlite3_bind_int(stmt, 6, CID) != SQLITE_OK) goto DB_SaveUnitListErr;
             if (sqlite3_bind_text(stmt, 7, (*iUL).second->Image.c_str(), -1, NULL) != SQLITE_OK) goto DB_SaveUnitListErr;
+            if (sqlite3_bind_text(stmt, 8, (*iUL).second->URI.c_str(), -1, NULL) != SQLITE_OK) goto DB_SaveUnitListErr;
             if (SQLITE_DONE != sqlite3_step(stmt))  goto DB_SaveUnitListErr;
             sqlite3_finalize(stmt);
         }
+        res = true;
 
     }
     DB_CloseDBC(DBC);
@@ -498,7 +539,7 @@ DB_SaveUnitListErr:
     char msg[1024];
     int ercod;
     ercod = sqlite3_errcode(DBC);
-    snprintf(msg, sizeof(msg) - 1, "DB_SaveExchangeState Error.(%d: %s)", ercod, sqlite3_errmsg(DBC));
+    snprintf(msg, sizeof(msg) - 1, "DB_SaveUnitList Error.(%d: %s)", ercod, sqlite3_errmsg(DBC));
     sqlite3_finalize(stmt);
     sqlite3_close(DBC);
     throw EDBException(msg);
@@ -506,7 +547,7 @@ DB_SaveUnitListErr:
 
 bool DB_SaveUnitsList(int CID, tmUnits *UnitsList)
 {
-    int res = false;
+    bool res = false;
     try {
         res = DB_SaveUnitsListEx(CID, UnitsList);
     }
@@ -517,6 +558,75 @@ bool DB_SaveUnitsList(int CID, tmUnits *UnitsList)
 }
 
 
+//-----------------------------------------------------------------------------
+//  Прочитать из базы информацию о структуре компании
+//  Возвращает кол-во найденых юнитов компании
+//-----------------------------------------------------------------------------
+int DB_GetUnitsList(int CID, tmUnits *UnitsList)
+{
+    int res = 0;
+    char msg[1024];
+    DB_DBC *DBC = DB_GetDBContext();
+    sqlite3_stmt *stmt;
+    tBIZUnit *unit;
+    int UnitID;
+    char *pC;
+
+    if (DBC) {
+
+        if (sqlite3_prepare_v2(DBC, "select UID, Type, City, Name, Image, URI from Units where Company=?1; ", -1, &stmt, 0) != SQLITE_OK) goto DB_GetUnitListDBErr;
+        if (sqlite3_bind_int(stmt, 1, CID) != SQLITE_OK)  goto DB_GetUnitListDBErr;
+        while (SQLITE_ROW == sqlite3_step(stmt)) {
+            UnitID = sqlite3_column_int(stmt, 0);
+            if (UnitID) {
+                unit = new tBIZUnit(UnitID);
+                if (unit) {
+                    //unit->ID = UnitID;
+                    unit->Type = sqlite3_column_int(stmt, 1);
+                    unit->CityID = sqlite3_column_int(stmt, 2);
+                    pC = (char*)sqlite3_column_text(stmt, 3);
+                    unit->Name = Utf8_to_cp1251( pC ? pC : "");
+                    pC = (char*)sqlite3_column_text(stmt, 4);
+                    unit->Image = pC ? pC : "";
+                    pC = (char*)sqlite3_column_text(stmt, 5);
+                    unit->URI = pC ? pC : ""; 
+                    UnitsList->insert(std::pair <int, tBIZUnit*>(unit->ID, unit));
+                    res++;
+                }
+                else {
+                    snprintf(msg, sizeof(msg) - 1, "Error DB_GetUnitsList: Не удалось создать объект tBIZUnit");
+                    goto DB_GetUnitListErr;
+                }
+            }
+        }
+        sqlite3_finalize(stmt);
+
+
+    }
+    DB_CloseDBC(DBC);
+    return res;
+
+DB_GetUnitListDBErr:
+    int ercod;
+    ercod = sqlite3_errcode(DBC);
+    snprintf(msg, sizeof(msg) - 1, "DB_GetUnitList Error.(%d: %s)", ercod, sqlite3_errmsg(DBC));
+DB_GetUnitListErr:
+    sqlite3_finalize(stmt);
+    sqlite3_close(DBC);
+    throw EDBException(msg);
+}
+
+int DB_GetUnitsListEx(int CID, tmUnits *UnitsList)
+{
+    int res = false;
+    try {
+        res = DB_GetUnitsList(CID, UnitsList);
+    }
+    catch (EDBException &e) {
+        LogMessage(e.Message.c_str(), ML_ERR2);
+    }
+    return res;
+}
 
 
 //-----------------------------------------------------------------------------
@@ -526,7 +636,7 @@ bool DB_SaveUnitsList(int CID, tmUnits *UnitsList)
 //-----------------------------------------------------------------------------
 bool DB_ExternExchangeSateEx(std::string BDName)
 {
-	int res = false;
+	bool res = false;
 	DB_DBC *DBC = DB_GetDBContext();
 	std::string sql;
 	int sqlres;
