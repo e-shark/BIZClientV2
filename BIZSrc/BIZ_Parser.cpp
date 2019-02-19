@@ -881,17 +881,12 @@ bool  BIZ_ParseProductInfoFromShop(char* Page, sBIZGoods *Info)
     if (!Page) return 0;
 
     try {
-        // Ищем место на стрвнице, где расположена нужная нам страниця=а
-        pcB = strstr(Page, "<tr align=\"center\"><td>по дням</td><td>по неделям</td>");
-        if (!pcB) throw EParserException(1);
-        pcB = strstr(pcB, "<table");
-        if (!pcB) throw EParserException(1);
-        pcE = FindCloseTag(pcB+5, "table");
-        if (!pcE) throw EParserException(1);
-        pc1 = strstr(pcB, "<tbody>");
-        if (pc1 && (pcB < pcE)) {                                                    // В новом магазине продаж может и не быть, тогда таблица будет пустая
-            pcB = pc1;
-            pcE = strstr(pcB, "</tbody>");
+        // Ищем место на стрвнице, где расположена нужная нам таблица продаж
+        pc1 = strstr(Page, "<table class=\"datatable\" cellpadding=\"5\" cellspacing=\"0\" border=\"0\" width=\"100%\">");
+        if (pc1 ) {                                                    //(вроде) В новом магазине продаж может и не быть, тогда таблица будет пустая
+            pcB = strstr(pc1, "<tbody>");
+            if (!pcB) throw EParserException(1);
+            pcE = FindCloseTag(pcB+5, "tbody");
             if (!pcE) throw EParserException(1);
 
             // Парсим таблицу продаж
@@ -1008,11 +1003,12 @@ bool  BIZ_ParseProductInfoFromShop(char* Page, sBIZGoods *Info)
                 pcRB = strstr(pcRB, "<tr class=\"tbl");
                 i++;
             }
-        }
+        }else pcE = Page;
+
         pcB = pcE;
 
         // Ищем начало остальных данных
-        pcB = strstr(pcB, "<table cellpadding=\"4\" cellspacing=\"1\" class=\"datatable\" width=\"100%\">");
+        pcB = strstr(pcB, "<table cellpadding=\"4\" cellspacing=\"1\" class=\"datatable\" align=\"center\">");
         if (!pcB) throw EParserException(1);
         pcE = strstr(pcB, "</table>");
         if (!pcE) throw EParserException(1);
@@ -1067,6 +1063,7 @@ bool  BIZ_ParseProductInfoFromShop(char* Page, sBIZGoods *Info)
         memcpy(ts, pc1, pc3 - pc1);
         fQuality = atof(SpaceRemove(ts));
 
+        /* теперь нет
         // тут должен быть какой-то "бренд"
         pc1 = strstr(pc3, "<td");
         if (!pc1) throw EParserException(1);
@@ -1074,6 +1071,7 @@ bool  BIZ_ParseProductInfoFromShop(char* Page, sBIZGoods *Info)
         pc3 = strstr(pc1, "</td>");
         if (!pc3) throw EParserException(1);
         if (pc3 >= pcRE) throw EParserException(1);
+        */
 
         // Парсим себестоимость товара на складе
         pc1 = strstr(pc3, "<td");
