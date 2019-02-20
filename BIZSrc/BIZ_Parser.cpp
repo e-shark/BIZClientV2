@@ -881,129 +881,131 @@ bool  BIZ_ParseProductInfoFromShop(char* Page, sBIZGoods *Info)
     if (!Page) return 0;
 
     try {
+        pcE = Page;
         // Ищем место на стрвнице, где расположена нужная нам таблица продаж
         pc1 = strstr(Page, "<table class=\"datatable\" cellpadding=\"5\" cellspacing=\"0\" border=\"0\" width=\"100%\">");
         if (pc1 ) {                                                    //(вроде) В новом магазине продаж может и не быть, тогда таблица будет пустая
             pcB = strstr(pc1, "<tbody>");
-            if (!pcB) throw EParserException(1);
-            pcE = FindCloseTag(pcB+5, "tbody");
-            if (!pcE) throw EParserException(1);
+            if (pcB) {                                                 // Если продаж нет, то таблица есть, но <body> у неё нету
+                pcE = FindCloseTag(pcB + 5, "tbody");
+                if (!pcE) throw EParserException(1);
 
-            // Парсим таблицу продаж
-            pcRB = strstr(pcB, "<tr class=\"tbl");
-            i = 0;
-            while (pcRB && (pcRB<pcE)) {
-                pcRB += 10;
-                pcRE = strstr(pcRB, "</tr>");
-                if (!pcRE) throw EParserException(1);
-                if (pcRE>pcE) throw EParserException(1);
+                // Парсим таблицу продаж
+                pcRB = strstr(pcB, "<tr class=\"tbl");
+                i = 0;
+                while (pcRB && (pcRB < pcE)) {
+                    pcRB += 10;
+                    pcRE = strstr(pcRB, "</tr>");
+                    if (!pcRE) throw EParserException(1);
+                    if (pcRE > pcE) throw EParserException(1);
 
-                // Парсим дату продаж
-                pc1 = strstr(pcRB, "<td");
-                if (!pc1) throw EParserException(1);
-                pc1 = strchr(pc1, '>');
-                if (!pc1) throw EParserException(1);
-                pc1 += 1;
-                pc3 = strstr(pc1, "</td>");
-                if (!pc3) throw EParserException(1);
-                if (pc3 >= pcRE) throw EParserException(1);
-                // ... день
-                pc2 = strchr(pc1, '.');
-                if (!pc2) throw EParserException(1);
-                if (pc2 >= pc3) throw EParserException(1);
-                memset(ts, 0, sizeof(ts));
-                memcpy(ts, pc1, pc2 - pc1);
-                fDDay = atoi(ts);
-                // ... месяц
-                pc1 = pc2 + 1;
-                pc2 = strchr(pc1, '.');
-                if (!pc2) throw EParserException(1);
-                if (pc2 >= pc3) throw EParserException(1);
-                memset(ts, 0, sizeof(ts));
-                memcpy(ts, pc1, pc2 - pc1);
-                fDMonth = atoi(ts);
-                // ... год
-                pc1 = pc2 + 1;
-                pc2 = pc3;
-                memset(ts, 0, sizeof(ts));
-                memcpy(ts, pc1, pc2 - pc1);
-                fDYear = atoi(ts);
+                    // Парсим дату продаж
+                    pc1 = strstr(pcRB, "<td");
+                    if (!pc1) throw EParserException(1);
+                    pc1 = strchr(pc1, '>');
+                    if (!pc1) throw EParserException(1);
+                    pc1 += 1;
+                    pc3 = strstr(pc1, "</td>");
+                    if (!pc3) throw EParserException(1);
+                    if (pc3 >= pcRE) throw EParserException(1);
+                    // ... день
+                    pc2 = strchr(pc1, '.');
+                    if (!pc2) throw EParserException(1);
+                    if (pc2 >= pc3) throw EParserException(1);
+                    memset(ts, 0, sizeof(ts));
+                    memcpy(ts, pc1, pc2 - pc1);
+                    fDDay = atoi(ts);
+                    // ... месяц
+                    pc1 = pc2 + 1;
+                    pc2 = strchr(pc1, '.');
+                    if (!pc2) throw EParserException(1);
+                    if (pc2 >= pc3) throw EParserException(1);
+                    memset(ts, 0, sizeof(ts));
+                    memcpy(ts, pc1, pc2 - pc1);
+                    fDMonth = atoi(ts);
+                    // ... год
+                    pc1 = pc2 + 1;
+                    pc2 = pc3;
+                    memset(ts, 0, sizeof(ts));
+                    memcpy(ts, pc1, pc2 - pc1);
+                    fDYear = atoi(ts);
 
-                // Парсим объем продаж
-                pc1 = strstr(pc3, "<td");
-                if (!pc1) throw EParserException(1);
-                pc1 = strchr(pc1, '>');
-                if (!pc1) throw EParserException(1);
-                pc1 += 1;
-                pc3 = strstr(pc1, "</td>");
-                if (!pc3) throw EParserException(1);
-                if (pc3 >= pcRE) throw EParserException(1);
-                memset(ts, 0, sizeof(ts));
-                memcpy(ts, pc1, pc3 - pc1);
-                fSales = atoi(SpaceRemove(ts));
+                    // Парсим объем продаж
+                    pc1 = strstr(pc3, "<td");
+                    if (!pc1) throw EParserException(1);
+                    pc1 = strchr(pc1, '>');
+                    if (!pc1) throw EParserException(1);
+                    pc1 += 1;
+                    pc3 = strstr(pc1, "</td>");
+                    if (!pc3) throw EParserException(1);
+                    if (pc3 >= pcRE) throw EParserException(1);
+                    memset(ts, 0, sizeof(ts));
+                    memcpy(ts, pc1, pc3 - pc1);
+                    fSales = atoi(SpaceRemove(ts));
 
-                // Парсим цену
-                pc1 = strstr(pc3, "<td");
-                if (!pc1) throw EParserException(1);
-                pc1 = strchr(pc1, '>');
-                if (!pc1) throw EParserException(1);
-                pc1 += 1;
-                pc3 = strstr(pc1, "</td>");
-                if (!pc3) throw EParserException(1);
-                if (pc3 >= pcRE) throw EParserException(1);
-                pc1 = my_strdig(pc1);
-                if (!pc1) throw EParserException(1);
-                if (pc1 >= pc3) throw EParserException(1);
-                memset(ts, 0, sizeof(ts));
-                memcpy(ts, pc1, pc3 - pc1);
-                fPrice = atoi(SpaceRemove(ts));
+                    // Парсим цену
+                    pc1 = strstr(pc3, "<td");
+                    if (!pc1) throw EParserException(1);
+                    pc1 = strchr(pc1, '>');
+                    if (!pc1) throw EParserException(1);
+                    pc1 += 1;
+                    pc3 = strstr(pc1, "</td>");
+                    if (!pc3) throw EParserException(1);
+                    if (pc3 >= pcRE) throw EParserException(1);
+                    pc1 = my_strdig(pc1);
+                    if (!pc1) throw EParserException(1);
+                    if (pc1 >= pc3) throw EParserException(1);
+                    memset(ts, 0, sizeof(ts));
+                    memcpy(ts, pc1, pc3 - pc1);
+                    fPrice = atoi(SpaceRemove(ts));
 
-                // Парсим выручку
-                pc1 = strstr(pc3, "<td");
-                if (!pc1) throw EParserException(1);
-                pc1 = strchr(pc1, '>');
-                if (!pc1) throw EParserException(1);
-                pc1 += 1;
-                pc3 = strstr(pc1, "</td>");
-                if (!pc3) throw EParserException(1);
-                if (pc3 >= pcRE) throw EParserException(1);
-                pc1 = my_strdig(pc1);
-                if (!pc1) throw EParserException(1);
-                if (pc1 >= pc3) throw EParserException(1);
-                memset(ts, 0, sizeof(ts));
-                memcpy(ts, pc1, pc3 - pc1);
-                fProceeds = atoi(SpaceRemove(ts));
+                    // Парсим выручку
+                    pc1 = strstr(pc3, "<td");
+                    if (!pc1) throw EParserException(1);
+                    pc1 = strchr(pc1, '>');
+                    if (!pc1) throw EParserException(1);
+                    pc1 += 1;
+                    pc3 = strstr(pc1, "</td>");
+                    if (!pc3) throw EParserException(1);
+                    if (pc3 >= pcRE) throw EParserException(1);
+                    pc1 = my_strdig(pc1);
+                    if (!pc1) throw EParserException(1);
+                    if (pc1 >= pc3) throw EParserException(1);
+                    memset(ts, 0, sizeof(ts));
+                    memcpy(ts, pc1, pc3 - pc1);
+                    fProceeds = atoi(SpaceRemove(ts));
 
-                // Парсим прибыль
-                pc1 = strstr(pc3, "<td");
-                if (!pc1) throw EParserException(1);
-                pc1 = strchr(pc1, '>');
-                if (!pc1) throw EParserException(1);
-                pc1 += 1;
-                pc3 = strstr(pc1, "</td>");
-                if (!pc3) throw EParserException(1);
-                if (pc3 >= pcRE) throw EParserException(1);
-                pc1 = my_strdig(pc1);
-                if (!pc1) throw EParserException(1);
-                if (pc1 >= pc3) throw EParserException(1);
-                memset(ts, 0, sizeof(ts));
-                memcpy(ts, pc1, pc3 - pc1);
-                fProfit = atoi(SpaceRemove(ts));
+                    // Парсим прибыль
+                    pc1 = strstr(pc3, "<td");
+                    if (!pc1) throw EParserException(1);
+                    pc1 = strchr(pc1, '>');
+                    if (!pc1) throw EParserException(1);
+                    pc1 += 1;
+                    pc3 = strstr(pc1, "</td>");
+                    if (!pc3) throw EParserException(1);
+                    if (pc3 >= pcRE) throw EParserException(1);
+                    pc1 = my_strdig(pc1);
+                    if (!pc1) throw EParserException(1);
+                    if (pc1 >= pc3) throw EParserException(1);
+                    memset(ts, 0, sizeof(ts));
+                    memcpy(ts, pc1, pc3 - pc1);
+                    fProfit = atoi(SpaceRemove(ts));
 
-                SalesHistory[i].DateTime.SrvDay = fDDay;
-                SalesHistory[i].DateTime.SrvMonth = fDMonth;
-                SalesHistory[i].DateTime.SrvYear = fDYear;
-                SalesHistory[i].Sales = fSales;
-                SalesHistory[i].Price = fPrice;
-                SalesHistory[i].Quality = fQuality;
-                SalesHistory[i].Proceeds = fProceeds;
-                SalesHistory[i].Profit = fProfit;
+                    SalesHistory[i].DateTime.SrvDay = fDDay;
+                    SalesHistory[i].DateTime.SrvMonth = fDMonth;
+                    SalesHistory[i].DateTime.SrvYear = fDYear;
+                    SalesHistory[i].Sales = fSales;
+                    SalesHistory[i].Price = fPrice;
+                    SalesHistory[i].Quality = fQuality;
+                    SalesHistory[i].Proceeds = fProceeds;
+                    SalesHistory[i].Profit = fProfit;
 
-                // ищем начало следующей строки
-                pcRB = strstr(pcRB, "<tr class=\"tbl");
-                i++;
+                    // ищем начало следующей строки
+                    pcRB = strstr(pcRB, "<tr class=\"tbl");
+                    i++;
+                }
             }
-        }else pcE = Page;
+        } 
 
         pcB = pcE;
 

@@ -1113,6 +1113,13 @@ x3:
         else
             bPrcshAnwy = false;
 
+        //----------------------------
+        // ДЛЯ ОТЛАДКИ
+        if (115 == (*iGL).second.ID) {
+            bPrcshAnwy = false;
+        }
+        //----------------------------
+
         VL->SelectForOrder(VL->fAverageQuality * (1.0 + fQualityOverpricing / 100.0), Num, bPrcshAnwy, fMaxPurchasePriceExcess, QMinLimit, QMaxLimit);
         if (ExecuteOreder(unitId, VL, &fCost)) {
             s = " Автозакупка в магазине id=";
